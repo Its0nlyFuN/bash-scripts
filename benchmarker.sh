@@ -14,7 +14,7 @@ if [[ -z $1 ]] ; then
 fi
 
 if [[ ! -d $1 ]] ; then
-	echo "The specified directory does not exist. Create it (y/n)? " DCHOICE
+	read -p "The specified directory does not exist. Create it (y/n)? " DCHOICE
 	if [[ $DCHOICE = "y" ]] ; then
 		mkdir $TMPDIR
 	else
