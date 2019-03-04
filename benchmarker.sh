@@ -13,11 +13,20 @@ if [[ -z $1 ]] ; then
 	exit 1
 fi
 
-if [[ ! -f /usr/bin/perf || ! -f /usr/bin/darktable-cli || ! -f /usr/bin/sysbench || ! -f /usr/bin/nasm ]] ; then
-	echo "nasm, perf, darktable and sysbench are not installed!"
+if [[ ! -d $1 ]] ; then
+	echo "The specified directory does not exist. Create it (y/n)? " DCHOICE
+	if [[ $DCHOICE = "y" ]] ; then
+		mkdir $TMPDIR
+	else
+		exit 1
+	fi
+fi
+
+if [[ ! -f /usr/bin/perf || ! -f /usr/bin/darktable-cli || ! -f /usr/bin/sysbench || ! -f /usr/bin/nasm || ! -f /usr/bin/time ]] ; then
+	echo "nasm, time, perf, darktable and/or sysbench are not installed!"
 	read -p "Install required packages (y/n)? " UCHOICE
 	if [[ $UCHOICE = "y" ]] ; then
-		sudo pacman -S nasm perf darktable sysbench
+		sudo pacman -S nasm perf darktable sysbench time
 	else
 		exit 1
 	fi
