@@ -22,11 +22,11 @@ if [[ ! -d $1 ]] ; then
 	fi
 fi
 
-if [[ ! -f /usr/bin/perf || ! -f /usr/bin/darktable-cli || ! -f /usr/bin/sysbench || ! -f /usr/bin/nasm || ! -f /usr/bin/time ]] ; then
-	echo "nasm, time, perf, darktable and/or sysbench are not installed!"
+if [[ ! -f /usr/bin/{perf,unzip,darktable-cli,sysbench,nasm,make,time} ]] ; then
+	echo "Some needed applications are not installed!"
 	read -p "Install required packages (y/n)? " UCHOICE
 	if [[ $UCHOICE = "y" ]] ; then
-		sudo pacman -S nasm perf darktable sysbench time
+		sudo pacman -S nasm perf darktable sysbench time unzip make
 	else
 		exit 1
 	fi
