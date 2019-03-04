@@ -22,7 +22,7 @@ if [[ ! -d $1 ]] ; then
 	fi
 fi
 
-if [[ ! -f /usr/bin/perf || ! -f /usr/bin/unzip || ! -f /usr/bin/darktable-cli || ! -f /usr/bin/sysbench || ! -f /usr/bin/nasm || ! -f /usr/bin/make || ! -f /usr/bin/time} ]] ; then
+if [[ ! -z `pacman -Qkq {perf,unzip,darktable,sysbench,nasm,time,make}` ]] then ;
 	echo "Some needed applications are not installed!"
 	read -p "Install required packages (y/n)? " UCHOICE
 	if [[ $UCHOICE = "y" ]] ; then
