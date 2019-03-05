@@ -8,7 +8,7 @@ TMPDIR="$1"
 LOGFILE="$TMPDIR/benchie_${CDATE}.log"
 RAMSIZE=`awk '/MemAvailable/{print $2}' /proc/meminfo`
 DEPS="$(pacman -Qkq {perf,unzip,darktable,sysbench,nasm,time,make} 2>/dev/null; echo $?)"
-TESTS=6
+NRTESTS=7
 
 if [[ -z $1 ]] ; then
 	echo "Please specify the full path for the temporary directory! Aborting."
