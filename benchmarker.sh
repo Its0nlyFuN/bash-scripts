@@ -108,7 +108,7 @@ echo "XZ compression: $(cat $TMPDIR/runxz)" >> $LOGFILE
 START="$(runffm)" ; sleep 2
 echo "FFmpeg compilation: $(cat $TMPDIR/runffm)" >> $LOGFILE
 
-if [ $RAMSIZE > 3000000 ] ; then
+if [ $RAMSIZE -gt 3000000 ] ; then
 	START="$(rundarkt)" ; sleep 2
 	echo "Darktable RAW conversion: $START" | sed 's/,/./g' - >> $LOGFILE
 else
