@@ -51,7 +51,7 @@ echo "======      torvic9     ======"
 echo "------------------------------"
 
 runffm() {
-    tar xf $TMPDIR/ffmpeg.tar.bz2 -C $TMPDIR/
+    tar xf $TMPDIR/ffmpeg.tar.bz2 -C $TMPDIR
 	cd $TMPDIR/ffmpeg-4.1
 	./configure --quiet --disable-debug --enable-static --enable-gpl --disable-nvdec --disable-nvenc --disable-ffnvcodec --disable-vaapi --disable-vdpau --disable-doc --disable-appkit --disable-avfoundation --disable-sndio --disable-schannel --disable-securetransport --disable-amf --disable-cuvid  --disable-d3d11va --disable-dxva2
 	local START=`/usr/bin/time -f %e -o ../runffm make -s -j$(nproc) &>/dev/null`
@@ -61,7 +61,7 @@ runffm() {
 
 runxz() {
  	unzip $TMPDIR/silesia.zip -d $TMPDIR/silesia/
- 	tar cf $TMPDIR/silesia.tar $TMPDIR/silesia/
+ 	tar cf $TMPDIR/silesia.tar $TMPDIR/silesia/ &>/dev/null
  	rm -rf $TMPDIR/silesia/
  	local START=`/usr/bin/time -f %e -o $TMPDIR/runxz xz -z -T$(nproc) -7 -Qq $TMPDIR/silesia.tar`
 	rm $TMPDIR/*.xz
