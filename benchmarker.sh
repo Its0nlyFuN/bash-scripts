@@ -1,12 +1,13 @@
 #!/bin/bash
 # torvic9
-# v0.1
+# v0.2
 
-LANG=C
+export LANG=C
 CDATE=`date +%F-%H%M`
 TMPDIR="$1"
 LOGFILE="$TMPDIR/benchie_${CDATE}.log"
 RAMSIZE=`awk '/MemAvailable/{print $2}' /proc/meminfo`
+DEPS="$(pacman -Qkq {perf,unzip,darktable,sysbench,nasm,time,make} 2>/dev/null; echo $?)"
 
 if [[ -z $1 ]] ; then
 	echo "Please specify the full path for the temporary directory! Aborting."
@@ -22,7 +23,7 @@ if [[ ! -d $1 ]] ; then
 	fi
 fi
 
-if [[ ! -z `pacman -Qkq {perf,unzip,darktable,sysbench,nasm,time,make}` ]] ; then
+if [[ $DEPS != 0 ]] ; then
 	echo "Some needed applications are not installed!"
 	read -p "Install required packages (y/n)? " UCHOICE
 	if [[ $UCHOICE = "y" ]] ; then
