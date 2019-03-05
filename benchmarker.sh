@@ -119,7 +119,7 @@ cat $LOGFILE
 
 ARRAY=()
 let i=0
-for ((i=0 ; i<$TESTS ; i++)) ; do
+for ((i=0 ; i<$NRTESTS ; i++)) ; do
 	ARRAY[$i]="$(echo "scale=3; sqrt(${arrayz[$i]}*12)" | bc -l)"
 done
 
