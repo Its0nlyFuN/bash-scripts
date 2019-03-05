@@ -22,7 +22,7 @@ if [[ ! -d $1 ]] ; then
 	fi
 fi
 
-if [[ ! -z `pacman -Qkq {perf,unzip,darktable,sysbench,nasm,time,make}` ]] then ;
+if [[ ! -z `pacman -Qkq {perf,unzip,darktable,sysbench,nasm,time,make}` ]] ; then
 	echo "Some needed applications are not installed!"
 	read -p "Install required packages (y/n)? " UCHOICE
 	if [[ $UCHOICE = "y" ]] ; then
@@ -109,7 +109,7 @@ echo "FFmpeg compilation: $(cat $TMPDIR/runffm)" >> $LOGFILE
 
 if [[ $RAMSIZE > 3000000 ]] ; then
 	START="$(rundarkt)" ; sleep 2
-	echo "Darktable RAW conversion: $START" | sed -n -e 's/,/./p' - >> $LOGFILE
+	echo "Darktable RAW conversion: $START" | sed 's/,/./g' - >> $LOGFILE
 else
 	echo "Darktable needs at least 3 GB of available RAM, aborting."
 	exit 1
@@ -122,6 +122,7 @@ arrayz=(`awk -F': ' '{print $2}' $LOGFILE`)
 echo "------------------------------"
 cat $LOGFILE
 
+let i=0
 for ((i=0 ; i<=6 ; i++)) ; do
 	ARRAY[$i]="$(echo "scale=3; sqrt(${arrayz[$i]}*12)" | bc -l)"
 done
