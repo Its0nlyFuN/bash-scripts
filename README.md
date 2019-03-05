@@ -1,1 +1,1 @@
-### a few bash scripts
+#### This is a small script for Manjaro/Arch that runs simple benchmarks.
