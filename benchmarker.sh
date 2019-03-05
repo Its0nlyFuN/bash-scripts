@@ -77,7 +77,7 @@ runpi() {
 }
 
 rundarkt() {
- 	local START=`darktable-cli $TMPDIR/bench.srw benchtest_$CDATE.jpg --core --configdir=/dev/null --disable-opencl -d perf 2>/dev/null | awk '/dev_process_export/{print $1}'`
+ 	local START=`darktable-cli $TMPDIR/bench.srw benchtest_$CDATE.jpg --core --configdir /dev/null --disable-opencl -d perf 2>/dev/null | awk '/dev_process_export/{print $1}'`
  	echo "$START"
 }
 
