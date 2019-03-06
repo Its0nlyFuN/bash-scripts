@@ -161,7 +161,7 @@ runxz ; sleep 2
 runffm ; sleep 2
 
 #if [ $RAMSIZE -gt 2500000 ] ; then
-#	rundarkt ; sleep 2
+rundarkt ; sleep 2
 #else
 #	echo -e "Darktable needs at least 2.5 GB of available RAM, aborting.\nTry running in runlevel 3."
 #	exit 1
@@ -172,10 +172,8 @@ unset arrayz; unset ARRAY
 # arrayn=(`awk -F': ' '{print $1}' $LOGFILE`)
 arrayz=(`awk -F': ' '{print $2}' $LOGFILE`)
 
-ARRAY=()
-i=0
 for ((i=0 ; i<$NRTESTS ; i++)) ; do
-	ARRAY[$i]="$(echo "scale=3; sqrt(${arrayz[$i]}*20)" | bc -l)"
+	ARRAY[$i]="$(echo "scale=3; sqrt(${arrayz[$i]}^-1)*100" | bc -l)"
 done
 echo "--------------------------------------"
 echo "Total time in seconds:"
