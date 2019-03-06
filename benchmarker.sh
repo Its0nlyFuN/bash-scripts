@@ -118,8 +118,8 @@ runpi() {
 
 rundarkt() {
 	local RESFILE="$TMPDIR/rundarkt" 	
-	darktable-cli $TMPDIR/bench.srw $TMPDIR/benchie_$CDATE.jpg --core --configdir /dev/null \
-	--disable-opencl -d perf 2>/dev/null | awk '/dev_process_export/{print $1}' > $RESFILE &
+	darktable-cli $TMPDIR/bench.srw $TMPDIR/benchie_$CDATE.jpg --core --tmpdir $TMPDIR \
+	--configdir /dev/null --disable-opencl -d perf 2>/dev/null | awk '/dev_process_export/{print $1}' > $RESFILE &
 	local PID=$!
 	echo -n -e "Darktable RAW conversion:\t"
 	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .2; done
@@ -160,18 +160,20 @@ runsysb2 ; sleep 2
 runxz ; sleep 2
 runffm ; sleep 2
 
-if [ $RAMSIZE -gt 2500000 ] ; then
-	rundarkt ; sleep 2
-else
-	echo -e "Darktable needs at least 2.5 GB of available RAM, aborting.\nTry running in runlevel 3."
-	exit 1
-fi
+#if [ $RAMSIZE -gt 2500000 ] ; then
+#	rundarkt ; sleep 2
+#else
+#	echo -e "Darktable needs at least 2.5 GB of available RAM, aborting.\nTry running in runlevel 3."
+#	exit 1
+#fi
 
 unset arrayz; unset ARRAY
 # arrayn not used currently
 # arrayn=(`awk -F': ' '{print $1}' $LOGFILE`)
 arrayz=(`awk -F': ' '{print $2}' $LOGFILE`)
 
+ARRAY=()
+i=0
 for ((i=0 ; i<$NRTESTS ; i++)) ; do
 	ARRAY[$i]="$(echo "scale=3; sqrt(${arrayz[$i]}*20)" | bc -l)"
 done
