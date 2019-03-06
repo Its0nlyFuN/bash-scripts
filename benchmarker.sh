@@ -1,11 +1,14 @@
 #!/bin/bash
-# torvic9
-# v0.3.1
+# by torvic9
+# Contributors and testers:
+# Richard Gladman, William Pursell, SGS, mbb, mbod, Manjaro Forum
 
 export LANG=C
+VER="v0.4"
 CDATE=`date +%F-%H%M`
 TMPDIR="$1"
 LOGFILE="$TMPDIR/benchie_${CDATE}.log"
+#LOCKFILE="$TMPDIR/benchie.lock"
 RAMSIZE=`awk '/MemAvailable/{print $2}' /proc/meminfo`
 DEPS="$(pacman -Qkq {perf,unzip,darktable,sysbench,nasm,time,make} 2>/dev/null; echo $?)"
 NRTESTS=7
@@ -34,6 +37,12 @@ if [[ $DEPS != 0 ]] ; then
 	fi
 fi
 
+read -p "It is recommended to drop the caches before starting, do you want \
+to do that now? Careful, root privileges needed! (y/n)" DCHOICE
+if [[ $DCHOICE = "y" ]]; then
+	su -c "echo 3 > /proc/sys/vm/drop_caches"
+fi
+
 echo -e "Checking and downloading missing test files...\n"
 if [[ ! -f $TMPDIR/silesia.zip ]]; then
  	wget -qO $TMPDIR/silesia.zip http://sun.aei.polsl.pl/~sdeor/corpus/silesia.zip
@@ -46,88 +55,136 @@ if [[ ! -f $TMPDIR/ffmpeg.tar.bz2 ]]; then
 	wget -qO $TMPDIR/ffmpeg.tar.bz2 https://ffmpeg.org/releases/ffmpeg-4.1.tar.bz2
 fi
 
-echo "====== MINI BENCHMARKER ======"
-echo "======      torvic9     ======"
-echo "------------------------------"
+echo "========== MINI BENCHMARKER =========="
+echo "==========      torvic9     =========="
+echo "==========       $VER       =========="
+echo "--------------------------------------"
 
 runffm() {
 	tar xf $TMPDIR/ffmpeg.tar.bz2 -C $TMPDIR
 	cd $TMPDIR/ffmpeg-4.1
-	./configure --quiet --disable-debug --enable-static --enable-gpl --disable-nvdec --disable-nvenc --disable-ffnvcodec --disable-vaapi --disable-vdpau --disable-doc --disable-appkit --disable-avfoundation --disable-sndio --disable-schannel --disable-securetransport --disable-amf --disable-cuvid  --disable-d3d11va --disable-dxva2
-	local START=`/usr/bin/time -f %e -o ../runffm make -s -j$(nproc) &>/dev/null`
+	local RESFILE="$TMPDIR/runffm"
+	./configure --quiet --disable-debug --enable-static --enable-gpl --disable-nvdec --disable-nvenc \
+	--disable-ffnvcodec --disable-vaapi --disable-vdpau --disable-doc --disable-appkit \
+	--disable-avfoundation --disable-sndio --disable-schannel --disable-securetransport \
+	--disable-amf --disable-cuvid  --disable-d3d11va --disable-dxva2
+	/usr/bin/time -f %e -o $RESFILE make -s -j$(nproc) &>/dev/null &
+	local PID=$!
+	echo -n -e "FFmpeg compilation:\t\t"
+	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .2; done
+	printf "\b " ; cat $RESFILE
+	echo "FFmpeg compilation: $(cat $RESFILE)" >> $LOGFILE
 	cd ../..
 	rm -rf $TMPDIR/ffmpeg-4.1/
+	return 0
 }
 
 runxz() {
- 	unzip $TMPDIR/silesia.zip -d $TMPDIR/silesia/
+ 	unzip $TMPDIR/silesia.zip -d $TMPDIR/silesia/ &>/dev/null
  	tar cf $TMPDIR/silesia.tar $TMPDIR/silesia/ &>/dev/null
  	rm -rf $TMPDIR/silesia/
- 	local START=`/usr/bin/time -f %e -o $TMPDIR/runxz xz -z -T$(nproc) -7 -Qq $TMPDIR/silesia.tar`
+	local RESFILE="$TMPDIR/runxz"
+ 	/usr/bin/time -f %e -o $RESFILE xz -z -T$(nproc) -7 -Qq $TMPDIR/silesia.tar &
+	local PID=$!
+	echo -n -e "XZ compression:\t\t\t"
+	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .2; done
+	printf "\b " ; cat $RESFILE
+	echo "XZ compression: $(cat $RESFILE)" >> $LOGFILE
 	rm $TMPDIR/*.xz
+	return 0
 }
 
 runperf() {
-	local START=`perf bench -f simple sched messaging -p -t -g 25 -l 10000`
-	echo "$START"
+	local RESFILE="$TMPDIR/runperf"	
+	perf bench -f simple sched messaging -p -t -g 25 -l 10000 1> $RESFILE &
+	local PID=$!
+	echo -n -e "Perf sched:\t\t\t"
+	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .2; done
+	printf "\b " ; cat $RESFILE
+	echo "Perf sched: $(cat $RESFILE)" >> $LOGFILE
+	return 0
 }
 
 runpi() {
-	local START=`/usr/bin/time -f%e -o $TMPDIR/runpi bc -l -q <<< "scale=6666; 4*a(1)" 1>/dev/null` 
+	local RESFILE="$TMPDIR/runpi" 
+	/usr/bin/time -f%e -o $RESFILE bc -l -q <<< "scale=6666; 4*a(1)" 1>/dev/null &
+	local PID=$!
+	echo -n -e "Calculating 6666 digits of pi:\t"
+	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .2; done
+	printf "\b " ; cat $RESFILE
+	echo "Calculating 6666 digits of pi: $(cat $RESFILE)" >> $LOGFILE
+	return 0
 }
 
 rundarkt() {
- 	local START=`darktable-cli $TMPDIR/bench.srw benchtest_$CDATE.jpg --core --configdir /dev/null --disable-opencl -d perf 2>/dev/null | awk '/dev_process_export/{print $1}'`
- 	echo "$START"
+	local RESFILE="$TMPDIR/rundarkt" 	
+	darktable-cli $TMPDIR/bench.srw $TMPDIR/benchie_$CDATE.jpg --core --configdir /dev/null \
+	--disable-opencl -d perf 2>/dev/null | awk '/dev_process_export/{print $1}' > $RESFILE &
+	local PID=$!
+	echo -n -e "Darktable RAW conversion:\t"
+	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .2; done
+	sed -i 's/.\{3\}$//;s/,/./' $RESFILE
+	printf "\b " ; cat $RESFILE
+	echo "Darktable RAW conversion: $(cat $RESFILE)" >> $LOGFILE
+	return 0
 }
 
 runsysb1() {
- 	local START=`/usr/bin/time -f %e -o $TMPDIR/runsysb1 sysbench --threads=$(nproc) --verbosity=0 --events=30000 --time=0 cpu run --cpu-max-prime=30000`
+	local RESFILE="$TMPDIR/runsysb1"
+ 	/usr/bin/time -f %e -o $RESFILE sysbench --threads=$(nproc) --verbosity=0 --events=20000 \
+ 	--time=0 cpu run --cpu-max-prime=50000 &
+	local PID=$!	
+	echo -n -e "Sysbench CPU:\t\t\t"
+	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .2; done
+	printf "\b " ; cat $RESFILE
+	echo "Sysbench CPU: $(cat $RESFILE)" >> $LOGFILE
+	return 0
 }
 runsysb2() {
- 	local START=`/usr/bin/time -f %e -o $TMPDIR/runsysb2 sysbench --threads=$(nproc) --verbosity=0 --time=0 memory run --memory-total-size=64G --memory-block-size=4K --memory-access-mode=rnd`
+	local RESFILE="$TMPDIR/runsysb2"
+ 	/usr/bin/time -f %e -o $RESFILE sysbench --threads=$(nproc) --verbosity=0 --time=0 memory \
+ 	run --memory-total-size=64G --memory-block-size=4K --memory-access-mode=rnd &>/dev/null &
+	local PID=$!	
+	echo -n -e "Sysbench RAM:\t\t\t"
+	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .2; done
+	printf "\b " ; cat $RESFILE
+	echo "Sysbench RAM: $(cat $RESFILE)" >> $LOGFILE
+	return 0
 }
 
-echo "Running..."
-START="$(runperf)" ; sleep 2
-echo "Perf sched: $START" > $LOGFILE
-START="$(runpi)" ; sleep 2
-echo "Calculating 6666 digits of pi: $(cat $TMPDIR/runpi)" >> $LOGFILE
-START="$(runsysb1)" ; sleep 2
-echo "SysBench CPU: $(cat $TMPDIR/runsysb1)" >> $LOGFILE
-START="$(runsysb2)" ; sleep 2
-echo "SysBench random memory: $(cat $TMPDIR/runsysb2)" >> $LOGFILE
-START="$(runxz)" ; sleep 2
-echo "XZ compression: $(cat $TMPDIR/runxz)" >> $LOGFILE
-START="$(runffm)" ; sleep 2
-echo "FFmpeg compilation: $(cat $TMPDIR/runffm)" >> $LOGFILE
+# start
+runperf ; sleep 2
+runpi ; sleep 2
+runsysb1 ; sleep 2
+runsysb2 ; sleep 2
+runxz ; sleep 2
+runffm ; sleep 2
 
-if [ $RAMSIZE -gt 3000000 ] ; then
-	START="$(rundarkt)" ; sleep 2
-	echo "Darktable RAW conversion: $START" | sed 's/,/./g' - >> $LOGFILE
+if [ $RAMSIZE -gt 2500000 ] ; then
+	rundarkt ; sleep 2
 else
-	echo "Darktable needs at least 3 GB of available RAM, aborting."
+	echo -e "Darktable needs at least 2.5 GB of available RAM, aborting.\nTry running in runlevel 3."
 	exit 1
 fi
 
-unset arrayn; unset arrayz; unset ARRAY
-arrayn=(`awk -F': ' '{print $1}' $LOGFILE`)
+unset arrayz; unset ARRAY
+# arrayn not used currently
+# arrayn=(`awk -F': ' '{print $1}' $LOGFILE`)
 arrayz=(`awk -F': ' '{print $2}' $LOGFILE`)
 
-echo "------------------------------"
-cat $LOGFILE
-
-ARRAY=()
-let i=0
 for ((i=0 ; i<$NRTESTS ; i++)) ; do
-	ARRAY[$i]="$(echo "scale=3; sqrt(${arrayz[$i]}*12)" | bc -l)"
+	ARRAY[$i]="$(echo "scale=3; sqrt(${arrayz[$i]}*20)" | bc -l)"
 done
-
-echo "------------------------------"
+echo "--------------------------------------"
+echo "Total time in seconds:"
+echo "--------------------------------------"
+echo "${arrayz[@]}" | sed 's/ /+/g' | bc
+echo "--------------------------------------"
 echo "Total score (lower is better):"
-echo "------------------------------"
-echo "${ARRAY[@]}" | sed 's/ /+/g' | bc
-echo "=============================="
-rm $TMPDIR/{runpi,runsysb1,runsysb2,runxz,runffm}
+echo "--------------------------------------"
+SCORE="$(IFS="+" ; bc <<< "scale=3; ${ARRAY[*]}")"
+echo $SCORE ; echo "Total score: $SCORE" >> $LOGFILE
+echo "======================================"
+rm $TMPDIR/{runpi,runsysb1,runsysb2,runxz,rundarkt,runffm}
 exit 0
 
