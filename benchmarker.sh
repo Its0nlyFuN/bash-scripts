@@ -180,7 +180,7 @@ echo "Total time in seconds:"
 echo "--------------------------------------"
 echo "${arrayz[@]}" | sed 's/ /+/g' | bc
 echo "--------------------------------------"
-echo "Total score (lower is better):"
+echo "Total score (higher is better):"
 echo "--------------------------------------"
 SCORE="$(IFS="+" ; bc <<< "scale=3; ${ARRAY[*]}")"
 echo $SCORE ; echo "Total score: $SCORE" >> $LOGFILE
