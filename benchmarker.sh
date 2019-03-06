@@ -173,7 +173,7 @@ unset arrayz; unset ARRAY
 arrayz=(`awk -F': ' '{print $2}' $LOGFILE`)
 
 for ((i=0 ; i<$NRTESTS ; i++)) ; do
-	ARRAY[$i]="$(echo "scale=3; sqrt(${arrayz[$i]}^-1)*100" | bc -l)"
+	ARRAY[$i]="$(echo "scale=3; sqrt(${arrayz[$i]}*20)" | bc -l)"
 done
 echo "--------------------------------------"
 echo "Total time in seconds:"
@@ -185,6 +185,6 @@ echo "--------------------------------------"
 SCORE="$(IFS="+" ; bc <<< "scale=3; ${ARRAY[*]}")"
 echo $SCORE ; echo "Total score: $SCORE" >> $LOGFILE
 echo "======================================"
-rm $TMPDIR/{runpi,runsysb1,runsysb2,runxz,rundarkt,runffm}
+rm $TMPDIR/{runpi,runsysb1,runsysb2,runxz,rundarkt,runperf,runffm}
 exit 0
 
