@@ -44,8 +44,9 @@ if [[ $DCHOICE = "y" ]]; then
 fi
 
 echo -e "Checking and downloading missing test files...\n"
-if [[ ! -f $TMPDIR/silesia.zip ]]; then
- 	wget -qO $TMPDIR/silesia.zip http://sun.aei.polsl.pl/~sdeor/corpus/silesia.zip
+if [[ ! -f $TMPDIR/kernel34.tar ]]; then
+	wget -qO $TMPDIR/kernel34.tar.xz https://cdn.kernel.org/pub/linux/kernel/v3.x/linux-3.4.tar.xz
+	xz -d -Qq $TMPDIR/kernel34.tar.xz &>/dev/null
 fi
 if [[ ! -f $TMPDIR/bench.srw && ! -f $TMPDIR/bench.srw.xmp ]]; then
  	wget -qO $TMPDIR/bench.srw http://www.mirada.ch/bench.SRW
@@ -80,17 +81,13 @@ runffm() {
 }
 
 runxz() {
- 	unzip $TMPDIR/silesia.zip -d $TMPDIR/silesia/ &>/dev/null
- 	tar cf $TMPDIR/silesia.tar $TMPDIR/silesia/ &>/dev/null
- 	rm -rf $TMPDIR/silesia/
 	local RESFILE="$TMPDIR/runxz"
- 	/usr/bin/time -f %e -o $RESFILE xz -z -T$(nproc) -7 -Qq $TMPDIR/silesia.tar &
+ 	/usr/bin/time -f %e -o $RESFILE xz -z -T$(nproc) -7 -Qq $TMPDIR/kernel34.tar &
 	local PID=$!
 	echo -n -e "XZ compression:\t\t\t"
 	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .2; done
 	printf "\b " ; cat $RESFILE
 	echo "XZ compression: $(cat $RESFILE)" >> $LOGFILE
-	rm $TMPDIR/*.xz
 	return 0
 }
 
@@ -180,7 +177,7 @@ echo "Total time in seconds:"
 echo "--------------------------------------"
 echo "${arrayz[@]}" | sed 's/ /+/g' | bc
 echo "--------------------------------------"
-echo "Total score (higher is better):"
+echo "Total score (lower is better):"
 echo "--------------------------------------"
 SCORE="$(IFS="+" ; bc <<< "scale=3; ${ARRAY[*]}")"
 echo $SCORE ; echo "Total score: $SCORE" >> $LOGFILE
