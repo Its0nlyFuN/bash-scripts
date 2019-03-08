@@ -4,6 +4,7 @@
 # Richard Gladman, William Pursell, SGS, mbb, mbod, Manjaro Forum
 
 runffm() {
+	if [[ -d $TMPDIR/ffmpeg-4.1 ]] ; then rm -rf $TMPDIR/ffmpeg-4.1 ]] ; fi
 	tar xf $TMPDIR/ffmpeg.tar.bz2 -C $TMPDIR
 	cd $TMPDIR/ffmpeg-4.1
 	local RESFILE="$TMPDIR/runffm"
@@ -24,6 +25,7 @@ runffm() {
 
 runxz() {
 	local RESFILE="$TMPDIR/runxz"
+	if [[ -f $TMPDIR/kernel34.tar.xz ]] ; then rm $TMPDIR/kernel34.tar.xz ; fi
  	/usr/bin/time -f %e -o $RESFILE xz -z -T$(nproc) -7 -Qq $TMPDIR/kernel34.tar &
 	local PID=$!
 	echo -n -e "XZ compression:\t\t\t"
@@ -77,7 +79,6 @@ runsysb1() {
 	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .2; done
 	printf "\b " ; cat $RESFILE
 	echo "Sysbench CPU: $(cat $RESFILE)" >> $LOGFILE
-	rm *.jpg
 	return 0
 }
 runsysb2() {
@@ -94,7 +95,7 @@ runsysb2() {
 
 killproc() {
 	echo -e "\n*** Received SIGINT, aborting! ***\n"
-	kill -9 $PID && exit 2
+	kill -- -$$ && exit 2
 }
 
 exitproc() {
@@ -102,18 +103,20 @@ exitproc() {
 	for i in $TMPDIR/{runxz,runffm,runsysb1,runsysb2,rundarkt,runperf,runpi} ; do
 		if [ -f $i ] ; then rm $i ; fi
 	done
+	rm $LOCKFILE
 }
 
+set -e
 export LANG=C
 VER="v0.4"
 CDATE=`date +%F-%H%M`
 TMPDIR="$1"
+#PGID=$(ps -o pgid= $PID | tr -d ' ')
 LOGFILE="$TMPDIR/benchie_${CDATE}.log"
-#LOCKFILE="$TMPDIR/benchie.lock"
+LOCKFILE=`mktemp $TMPDIR/benchie.XXXX`
 RAMSIZE=`awk '/MemAvailable/{print $2}' /proc/meminfo`
-#DEPS="$(pacman -Qkq {perf,unzip,darktable,sysbench,nasm,time,make} 2>/dev/null; echo $?)"
 NRTESTS=7
-SYSINFO=`inxi -c0 -v`
+SYSINFO=`inxi -c0 -v | sed -e "s/Up:.*//" -e "s/inxi:.*//"`
 
 if [[ -z $1 ]] ; then
 	echo "Please specify the full path for the temporary directory! Aborting."
@@ -128,16 +131,6 @@ if [[ ! -d $1 ]] ; then
 		exit 1
 	fi
 fi
-
-#if [[ $DEPS != 0 ]] ; then
-#	echo "Some needed applications are not installed!"
-#	read -p "Install required packages (y/N)? " UCHOICE
-#	if [[ $UCHOICE = "y" || $UCHOICE = "Y" ]] ; then
-#		sudo pacman -S nasm perf darktable sysbench time unzip make
-#	else
-#		exit 1
-#	fi
-#fi
 
 read -p "It is recommended to drop the caches before starting, do you want \
 to do that now? Careful, root privileges needed! (y/N)" DCHOICE
