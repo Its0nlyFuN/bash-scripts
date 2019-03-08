@@ -4,13 +4,13 @@
 # Richard Gladman, William Pursell, SGS, mbb, mbod, Manjaro Forum
 
 export LANG=C
-VER="v0.4.1"
+VER="v0.4"
 CDATE=`date +%F-%H%M`
 TMPDIR="$1"
 LOGFILE="$TMPDIR/benchie_${CDATE}.log"
 #LOCKFILE="$TMPDIR/benchie.lock"
 RAMSIZE=`awk '/MemAvailable/{print $2}' /proc/meminfo`
-DEPS="$(pacman -Qkq {perf,unzip,darktable,sysbench,nasm,time,make} 2>/dev/null; echo $?)"
+#DEPS="$(pacman -Qkq {perf,unzip,darktable,sysbench,nasm,time,make} 2>/dev/null; echo $?)"
 NRTESTS=7
 
 if [[ -z $1 ]] ; then
@@ -27,15 +27,15 @@ if [[ ! -d $1 ]] ; then
 	fi
 fi
 
-if [[ $DEPS != 0 ]] ; then
-	echo "Some needed applications are not installed!"
-	read -p "Install required packages (y/n)? " UCHOICE
-	if [[ $UCHOICE = "y" ]] ; then
-		sudo pacman -S nasm perf darktable sysbench time unzip make
-	else
-		exit 1
-	fi
-fi
+#if [[ $DEPS != 0 ]] ; then
+#	echo "Some needed applications are not installed!"
+#	read -p "Install required packages (y/n)? " UCHOICE
+#	if [[ $UCHOICE = "y" ]] ; then
+#		sudo pacman -S nasm perf darktable sysbench time unzip make
+#	else
+#		exit 1
+#	fi
+#fi
 
 read -p "It is recommended to drop the caches before starting, do you want \
 to do that now? Careful, root privileges needed! (y/n)" DCHOICE
