@@ -1,34 +1,34 @@
 #!/bin/bash
 # by torvic9
 # Contributors and testers:
-# Richard Gladman, William Pursell, SGS, mbb, mbod, Manjaro Forum
+# Richard Gladman, William Pursell, SGS, mbb, mbod, Manjaro Forum, StackOverflow
 
 runffm() {
-	if [[ -d $TMPDIR/ffmpeg-4.1 ]] ; then rm -rf $TMPDIR/ffmpeg-4.1 ]] ; fi
-	tar xf $TMPDIR/ffmpeg.tar.bz2 -C $TMPDIR
-	cd $TMPDIR/ffmpeg-4.1
-	local RESFILE="$TMPDIR/runffm"
+	if [[ -d $WORKDIR/ffmpeg-4.1 ]] ; then rm -rf $WORKDIR/ffmpeg-4.1 ]] ; fi
+	tar xf $WORKDIR/ffmpeg.tar.bz2 -C $WORKDIR
+	cd $WORKDIR/ffmpeg-4.1
+	local RESFILE="$WORKDIR/runffm"
 	./configure --quiet --disable-debug --enable-static --enable-gpl --disable-nvdec --disable-nvenc \
 	--disable-ffnvcodec --disable-vaapi --disable-vdpau --disable-doc --disable-appkit \
 	--disable-avfoundation --disable-sndio --disable-schannel --disable-securetransport \
 	--disable-amf --disable-cuvid  --disable-d3d11va --disable-dxva2
 	/usr/bin/time -f %e -o $RESFILE make -s -j$(nproc) &>/dev/null &
 	local PID=$!
-	echo -n -e "FFmpeg compilation:\t\t"
+	echo -n -e "FFmpeg compilation:\t\t\t"
 	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .2; done
 	printf "\b " ; cat $RESFILE
 	echo "FFmpeg compilation: $(cat $RESFILE)" >> $LOGFILE
 	cd ../..
-	rm -rf $TMPDIR/ffmpeg-4.1/
+	rm -rf $WORKDIR/ffmpeg-4.1/
 	return 0
 }
 
 runxz() {
-	local RESFILE="$TMPDIR/runxz"
-	if [[ -f $TMPDIR/kernel34.tar.xz ]] ; then rm $TMPDIR/kernel34.tar.xz ; fi
- 	/usr/bin/time -f %e -o $RESFILE xz -z -T$(nproc) -7 -Qq $TMPDIR/kernel34.tar &
+	gunzip -k -f -q $WORKDIR/kernel34.tar.gz
+	local RESFILE="$WORKDIR/runxz"
+ 	/usr/bin/time -f %e -o $RESFILE xz -z -T$(nproc) -7 -Qq $WORKDIR/kernel34.tar &
 	local PID=$!
-	echo -n -e "XZ compression:\t\t\t"
+	echo -n -e "XZ compression:\t\t\t\t"
 	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .2; done
 	printf "\b " ; cat $RESFILE
 	echo "XZ compression: $(cat $RESFILE)" >> $LOGFILE
@@ -36,10 +36,10 @@ runxz() {
 }
 
 runperf() {
-	local RESFILE="$TMPDIR/runperf"	
+	local RESFILE="$WORKDIR/runperf"	
 	perf bench -f simple sched messaging -p -t -g 25 -l 10000 1> $RESFILE &
 	local PID=$!
-	echo -n -e "Perf sched:\t\t\t"
+	echo -n -e "Perf sched:\t\t\t\t"
 	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .2; done
 	printf "\b " ; cat $RESFILE
 	echo "Perf sched: $(cat $RESFILE)" >> $LOGFILE
@@ -47,10 +47,10 @@ runperf() {
 }
 
 runpi() {
-	local RESFILE="$TMPDIR/runpi" 
+	local RESFILE="$WORKDIR/runpi" 
 	/usr/bin/time -f%e -o $RESFILE bc -l -q <<< "scale=6666; 4*a(1)" 1>/dev/null &
 	local PID=$!
-	echo -n -e "Calculating 6666 digits of pi:\t"
+	echo -n -e "Calculating 6666 digits of pi:\t\t"
 	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .2; done
 	printf "\b " ; cat $RESFILE
 	echo "Calculating 6666 digits of pi: $(cat $RESFILE)" >> $LOGFILE
@@ -58,11 +58,11 @@ runpi() {
 }
 
 rundarkt() {
-	local RESFILE="$TMPDIR/rundarkt" 	
-	darktable-cli $TMPDIR/bench.srw $TMPDIR/benchie_$CDATE.jpg --core --tmpdir $TMPDIR \
+	local RESFILE="$WORKDIR/rundarkt" 	
+	darktable-cli $WORKDIR/bench.srw $WORKDIR/benchie_$CDATE.jpg --core --tmpdir $WORKDIR \
 	--configdir /dev/null --disable-opencl -d perf 2>/dev/null | awk '/dev_process_export/{print $1}' > $RESFILE &
 	local PID=$!
-	echo -n -e "Darktable RAW conversion:\t"
+	echo -n -e "Darktable RAW conversion:\t\t"
 	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .2; done
 	sed -i 's/.\{3\}$//;s/,/./' $RESFILE
 	printf "\b " ; cat $RESFILE
@@ -71,22 +71,23 @@ rundarkt() {
 }
 
 runsysb1() {
-	local RESFILE="$TMPDIR/runsysb1"
+	local RESFILE="$WORKDIR/runsysb1"
  	/usr/bin/time -f %e -o $RESFILE sysbench --threads=$(nproc) --verbosity=0 --events=20000 \
  	--time=0 cpu run --cpu-max-prime=50000 &
 	local PID=$!	
-	echo -n -e "Sysbench CPU:\t\t\t"
+	echo -n -e "Sysbench CPU:\t\t\t\t"
 	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .2; done
 	printf "\b " ; cat $RESFILE
 	echo "Sysbench CPU: $(cat $RESFILE)" >> $LOGFILE
 	return 0
 }
+
 runsysb2() {
-	local RESFILE="$TMPDIR/runsysb2"
+	local RESFILE="$WORKDIR/runsysb2"
  	/usr/bin/time -f %e -o $RESFILE sysbench --threads=$(nproc) --verbosity=0 --time=0 memory \
  	run --memory-total-size=64G --memory-block-size=4K --memory-access-mode=rnd &>/dev/null &
 	local PID=$!	
-	echo -n -e "Sysbench RAM:\t\t\t"
+	echo -n -e "Sysbench RAM:\t\t\t\t"
 	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .2; done
 	printf "\b " ; cat $RESFILE
 	echo "Sysbench RAM: $(cat $RESFILE)" >> $LOGFILE
@@ -99,24 +100,26 @@ killproc() {
 }
 
 exitproc() {
-	echo -e "\nRemoving temporary files...\n"
-	for i in $TMPDIR/{runxz,runffm,runsysb1,runsysb2,rundarkt,runperf,runpi} ; do
+	echo -e "Removing temporary files...\n"
+	for i in $WORKDIR/{runxz,runffm,runsysb1,runsysb2,rundarkt,runperf,runpi,benchie_*.jpg,kernel34.tar} ; do
 		if [ -f $i ] ; then rm $i ; fi
 	done
-	rm $LOCKFILE
+	rm $(echo $LOCKFILE)
 }
 
 set -e
 export LANG=C
+WORKDIR="$1"
+LOCKFILE=`mktemp $WORKDIR/benchie.XXXX`
 VER="v0.4"
 CDATE=`date +%F-%H%M`
-TMPDIR="$1"
 #PGID=$(ps -o pgid= $PID | tr -d ' ')
-LOGFILE="$TMPDIR/benchie_${CDATE}.log"
-LOCKFILE=`mktemp $TMPDIR/benchie.XXXX`
-RAMSIZE=`awk '/MemAvailable/{print $2}' /proc/meminfo`
+LOGFILE="$WORKDIR/benchie_${CDATE}.log"
+#RAMSIZE=`awk '/MemAvailable/{print $2}' /proc/meminfo`
 NRTESTS=7
-SYSINFO=`inxi -c0 -v | sed -e "s/Up:.*//" -e "s/inxi:.*//"`
+SYSINFO=`inxi -c0 -v | sed "s/Up:.*//;s/inxi:.*//;s/Storage:.*//"`
+
+echo "$LOCKFILE" >/dev/null
 
 if [[ -z $1 ]] ; then
 	echo "Please specify the full path for the temporary directory! Aborting."
@@ -126,7 +129,7 @@ fi
 if [[ ! -d $1 ]] ; then
 	read -p "The specified directory does not exist. Create it (y/N)? " DCHOICE
 	if [[ $DCHOICE = "y" || $DCHOICE = "Y" ]] ; then
-		mkdir $TMPDIR
+		mkdir $WORKDIR
 	else
 		exit 1
 	fi
@@ -139,25 +142,23 @@ if [[ $DCHOICE = "y" || $DCHOICE = "Y" ]]; then
 fi
 
 echo -e "Checking and downloading missing test files...\n"
-if [[ ! -f $TMPDIR/kernel34.tar ]]; then
-	wget --show-progress -qO $TMPDIR/kernel34.tar.xz https://cdn.kernel.org/pub/linux/kernel/v3.x/linux-3.4.tar.xz
-	xz -d -Qq $TMPDIR/kernel34.tar.xz &>/dev/null
+if [[ ! -f $WORKDIR/kernel34.tar.gz ]]; then
+	wget --show-progress -qO $WORKDIR/kernel34.tar.gz https://cdn.kernel.org/pub/linux/kernel/v3.x/linux-3.4.tar.gz
 fi
-if [[ ! -f $TMPDIR/bench.srw && ! -f $TMPDIR/bench.srw.xmp ]]; then
- 	wget --show-progress -qO $TMPDIR/bench.srw http://www.mirada.ch/bench.SRW
- 	wget -qO $TMPDIR/bench.srw.xmp http://www.mirada.ch/bench.SRW.xmp
+if [[ ! -f $WORKDIR/bench.srw && ! -f $WORKDIR/bench.srw.xmp ]]; then
+ 	wget --show-progress -qO $WORKDIR/bench.srw http://www.mirada.ch/bench.SRW
+ 	wget -qO $WORKDIR/bench.srw.xmp http://www.mirada.ch/bench.SRW.xmp
 fi
-if [[ ! -f $TMPDIR/ffmpeg.tar.bz2 ]]; then
-	wget --show-progress -qO $TMPDIR/ffmpeg.tar.bz2 https://ffmpeg.org/releases/ffmpeg-4.1.tar.bz2
+if [[ ! -f $WORKDIR/ffmpeg.tar.bz2 ]]; then
+	wget --show-progress -qO $WORKDIR/ffmpeg.tar.bz2 https://ffmpeg.org/releases/ffmpeg-4.1.tar.bz2
 fi
 
 printf "\n"
-echo "========== MINI BENCHMARKER =========="
-echo "==========      torvic9     =========="
-echo "==========       $VER       =========="
-echo "--------------------------------------"
-
-
+echo "======__==__ ============================ _____======="
+echo "=====|  \/  |===== MINI BENCHMARKER =====| ___ ))====="
+echo "=====| |\/| |=====      torvic9     =====| ___ \======"
+echo "=====|_|==|_|=====       $VER       =====|_____//====="
+echo "======================================================"
 
 # start
 trap killproc INT
@@ -168,13 +169,7 @@ runsysb1 ; sleep 2
 runsysb2 ; sleep 2
 runxz ; sleep 2
 runffm ; sleep 2
-
-#if [ $RAMSIZE -gt 2500000 ] ; then
 rundarkt ; sleep 2
-#else
-#	echo -e "Darktable needs at least 2.5 GB of available RAM, aborting.\nTry running in runlevel 3."
-#	exit 1
-#fi
 
 unset arrayz; unset ARRAY
 # arrayn not used currently
@@ -184,16 +179,16 @@ arrayz=(`awk -F': ' '{print $2}' $LOGFILE`)
 for ((i=0 ; i<$NRTESTS ; i++)) ; do
 	ARRAY[$i]="$(echo "scale=3; sqrt(${arrayz[$i]}*20)" | bc -l)"
 done
-echo "--------------------------------------"
+echo "------------------------------------------------------"
 echo "Total time in seconds:"
-echo "--------------------------------------"
+echo "------------------------------------------------------"
 echo "${arrayz[@]}" | sed 's/ /+/g' | bc
-echo "--------------------------------------"
+echo "------------------------------------------------------"
 echo "Total score (lower is better):"
-echo "--------------------------------------"
+echo "------------------------------------------------------"
 SCORE="$(IFS="+" ; bc <<< "scale=3; ${ARRAY[*]}")"
 echo $SCORE ; echo "Total score: $SCORE" >> $LOGFILE
 echo $SYSINFO >> $LOGFILE
-echo "======================================"
+echo "======================================================"
 
 exit 0
