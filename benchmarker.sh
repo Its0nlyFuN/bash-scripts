@@ -3,64 +3,6 @@
 # Contributors and testers:
 # Richard Gladman, William Pursell, SGS, mbb, mbod, Manjaro Forum
 
-export LANG=C
-VER="v0.4"
-CDATE=`date +%F-%H%M`
-TMPDIR="$1"
-LOGFILE="$TMPDIR/benchie_${CDATE}.log"
-#LOCKFILE="$TMPDIR/benchie.lock"
-RAMSIZE=`awk '/MemAvailable/{print $2}' /proc/meminfo`
-#DEPS="$(pacman -Qkq {perf,unzip,darktable,sysbench,nasm,time,make} 2>/dev/null; echo $?)"
-NRTESTS=7
-
-if [[ -z $1 ]] ; then
-	echo "Please specify the full path for the temporary directory! Aborting."
-	exit 1
-fi
-
-if [[ ! -d $1 ]] ; then
-	read -p "The specified directory does not exist. Create it (y/n)? " DCHOICE
-	if [[ $DCHOICE = "y" ]] ; then
-		mkdir $TMPDIR
-	else
-		exit 1
-	fi
-fi
-
-#if [[ $DEPS != 0 ]] ; then
-#	echo "Some needed applications are not installed!"
-#	read -p "Install required packages (y/n)? " UCHOICE
-#	if [[ $UCHOICE = "y" ]] ; then
-#		sudo pacman -S nasm perf darktable sysbench time unzip make
-#	else
-#		exit 1
-#	fi
-#fi
-
-read -p "It is recommended to drop the caches before starting, do you want \
-to do that now? Careful, root privileges needed! (y/n)" DCHOICE
-if [[ $DCHOICE = "y" ]]; then
-	su -c "echo 3 > /proc/sys/vm/drop_caches"
-fi
-
-echo -e "Checking and downloading missing test files...\n"
-if [[ ! -f $TMPDIR/kernel34.tar ]]; then
-	wget -qO $TMPDIR/kernel34.tar.xz https://cdn.kernel.org/pub/linux/kernel/v3.x/linux-3.4.tar.xz
-	xz -d -Qq $TMPDIR/kernel34.tar.xz &>/dev/null
-fi
-if [[ ! -f $TMPDIR/bench.srw && ! -f $TMPDIR/bench.srw.xmp ]]; then
- 	wget -qO $TMPDIR/bench.srw http://www.mirada.ch/bench.SRW
- 	wget -qO $TMPDIR/bench.srw.xmp http://www.mirada.ch/bench.SRW.xmp
-fi
-if [[ ! -f $TMPDIR/ffmpeg.tar.bz2 ]]; then
-	wget -qO $TMPDIR/ffmpeg.tar.bz2 https://ffmpeg.org/releases/ffmpeg-4.1.tar.bz2
-fi
-
-echo "========== MINI BENCHMARKER =========="
-echo "==========      torvic9     =========="
-echo "==========       $VER       =========="
-echo "--------------------------------------"
-
 runffm() {
 	tar xf $TMPDIR/ffmpeg.tar.bz2 -C $TMPDIR
 	cd $TMPDIR/ffmpeg-4.1
@@ -162,6 +104,68 @@ exitproc() {
 	done
 }
 
+export LANG=C
+VER="v0.4"
+CDATE=`date +%F-%H%M`
+TMPDIR="$1"
+LOGFILE="$TMPDIR/benchie_${CDATE}.log"
+#LOCKFILE="$TMPDIR/benchie.lock"
+RAMSIZE=`awk '/MemAvailable/{print $2}' /proc/meminfo`
+#DEPS="$(pacman -Qkq {perf,unzip,darktable,sysbench,nasm,time,make} 2>/dev/null; echo $?)"
+NRTESTS=7
+SYSINFO=`inxi -c0 -v`
+
+if [[ -z $1 ]] ; then
+	echo "Please specify the full path for the temporary directory! Aborting."
+	exit 1
+fi
+
+if [[ ! -d $1 ]] ; then
+	read -p "The specified directory does not exist. Create it (y/N)? " DCHOICE
+	if [[ $DCHOICE = "y" || $DCHOICE = "Y" ]] ; then
+		mkdir $TMPDIR
+	else
+		exit 1
+	fi
+fi
+
+#if [[ $DEPS != 0 ]] ; then
+#	echo "Some needed applications are not installed!"
+#	read -p "Install required packages (y/N)? " UCHOICE
+#	if [[ $UCHOICE = "y" || $UCHOICE = "Y" ]] ; then
+#		sudo pacman -S nasm perf darktable sysbench time unzip make
+#	else
+#		exit 1
+#	fi
+#fi
+
+read -p "It is recommended to drop the caches before starting, do you want \
+to do that now? Careful, root privileges needed! (y/N)" DCHOICE
+if [[ $DCHOICE = "y" || $DCHOICE = "Y" ]]; then
+	su -c "echo 3 > /proc/sys/vm/drop_caches"
+fi
+
+echo -e "Checking and downloading missing test files...\n"
+if [[ ! -f $TMPDIR/kernel34.tar ]]; then
+	wget --show-progress -qO $TMPDIR/kernel34.tar.xz https://cdn.kernel.org/pub/linux/kernel/v3.x/linux-3.4.tar.xz
+	xz -d -Qq $TMPDIR/kernel34.tar.xz &>/dev/null
+fi
+if [[ ! -f $TMPDIR/bench.srw && ! -f $TMPDIR/bench.srw.xmp ]]; then
+ 	wget --show-progress -qO $TMPDIR/bench.srw http://www.mirada.ch/bench.SRW
+ 	wget -qO $TMPDIR/bench.srw.xmp http://www.mirada.ch/bench.SRW.xmp
+fi
+if [[ ! -f $TMPDIR/ffmpeg.tar.bz2 ]]; then
+	wget --show-progress -qO $TMPDIR/ffmpeg.tar.bz2 https://ffmpeg.org/releases/ffmpeg-4.1.tar.bz2
+fi
+
+printf "\n"
+echo "========== MINI BENCHMARKER =========="
+echo "==========      torvic9     =========="
+echo "==========       $VER       =========="
+echo "--------------------------------------"
+
+
+
 # start
 trap killproc INT
 trap exitproc EXIT
@@ -196,6 +200,7 @@ echo "Total score (lower is better):"
 echo "--------------------------------------"
 SCORE="$(IFS="+" ; bc <<< "scale=3; ${ARRAY[*]}")"
 echo $SCORE ; echo "Total score: $SCORE" >> $LOGFILE
+echo $SYSINFO >> $LOGFILE
 echo "======================================"
 
 exit 0
