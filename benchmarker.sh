@@ -4,7 +4,7 @@
 # Richard Gladman, William Pursell, SGS, mbb, mbod, Manjaro Forum
 
 export LANG=C
-VER="v0.4"
+VER="v0.4.1"
 CDATE=`date +%F-%H%M`
 TMPDIR="$1"
 LOGFILE="$TMPDIR/benchie_${CDATE}.log"
@@ -135,6 +135,7 @@ runsysb1() {
 	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .2; done
 	printf "\b " ; cat $RESFILE
 	echo "Sysbench CPU: $(cat $RESFILE)" >> $LOGFILE
+	rm *.jpg
 	return 0
 }
 runsysb2() {
@@ -149,7 +150,21 @@ runsysb2() {
 	return 0
 }
 
+killproc() {
+	echo -e "\n*** Received SIGINT, aborting! ***\n"
+	kill -9 $PID && exit 2
+}
+
+exitproc() {
+	echo -e "\nRemoving temporary files...\n"
+	for i in $TMPDIR/{runxz,runffm,runsysb1,runsysb2,rundarkt,runperf,runpi} ; do
+		if [ -f $i ] ; then rm $i ; fi
+	done
+}
+
 # start
+trap killproc INT
+trap exitproc EXIT
 runperf ; sleep 2
 runpi ; sleep 2
 runsysb1 ; sleep 2
@@ -182,6 +197,5 @@ echo "--------------------------------------"
 SCORE="$(IFS="+" ; bc <<< "scale=3; ${ARRAY[*]}")"
 echo $SCORE ; echo "Total score: $SCORE" >> $LOGFILE
 echo "======================================"
-rm $TMPDIR/{runpi,runsysb1,runsysb2,runxz,rundarkt,runperf,runffm}
-exit 0
 
+exit 0
