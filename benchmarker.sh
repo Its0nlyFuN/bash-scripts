@@ -101,7 +101,7 @@ killproc() {
 
 exitproc() {
 	echo -e "Removing temporary files...\n"
-	for i in $WORKDIR/{runxz,runffm,runsysb1,runsysb2,rundarkt,runperf,runpi,benchie_*.jpg,kernel34.tar} ; do
+	for i in $WORKDIR/{run*,benchie_*.jpg,kernel34.tar,kernel34.tar.xz} ; do
 		if [ -f $i ] ; then rm $i ; fi
 	done
 	rm $(echo $LOCKFILE)
@@ -145,7 +145,7 @@ echo -e "Checking and downloading missing test files...\n"
 if [[ ! -f $WORKDIR/kernel34.tar.gz ]]; then
 	wget --show-progress -qO $WORKDIR/kernel34.tar.gz https://cdn.kernel.org/pub/linux/kernel/v3.x/linux-3.4.tar.gz
 fi
-if [[ -f $WORKDIR/kernel34.tar.xz ]] ; then rm $WORKDIR/kernel34.tar.xz ; fi
+#if [[ -f $WORKDIR/kernel34.tar.xz ]] ; then rm $WORKDIR/kernel34.tar.xz ; fi
 if [[ ! -f $WORKDIR/bench.srw && ! -f $WORKDIR/bench.srw.xmp ]]; then
  	wget --show-progress -qO $WORKDIR/bench.srw http://www.mirada.ch/bench.SRW
  	wget -qO $WORKDIR/bench.srw.xmp http://www.mirada.ch/bench.SRW.xmp
