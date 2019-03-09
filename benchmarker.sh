@@ -111,7 +111,7 @@ set -e
 export LANG=C
 WORKDIR="$1"
 LOCKFILE=`mktemp $WORKDIR/benchie.XXXX`
-VER="v0.4"
+VER="v0.5"
 CDATE=`date +%F-%H%M`
 #PGID=$(ps -o pgid= $PID | tr -d ' ')
 LOGFILE="$WORKDIR/benchie_${CDATE}.log"
