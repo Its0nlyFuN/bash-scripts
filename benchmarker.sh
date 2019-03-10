@@ -123,7 +123,6 @@ exitproc() {
 set -e
 export LANG=C
 WORKDIR="$1"
-LOCKFILE=`mktemp $WORKDIR/benchie.XXXX`
 VER="v0.5"
 CDATE=`date +%F-%H%M`
 #PGID=$(ps -o pgid= $PID | tr -d ' ')
@@ -147,6 +146,7 @@ if [[ ! -d $1 ]] ; then
 		exit 1
 	fi
 fi
+LOCKFILE=`mktemp $WORKDIR/benchie.XXXX`
 
 read -p "It is recommended to drop the caches before starting, do you want \
 to do that now? Careful, root privileges needed! (y/N)" DCHOICE
