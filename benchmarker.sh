@@ -14,7 +14,7 @@ runffm() {
 	--disable-amf --disable-cuvid  --disable-d3d11va --disable-dxva2
 	/usr/bin/time -f %e -o $RESFILE make -s -j$(nproc) &>/dev/null &
 	local PID=$!
-	echo -n -e "FFmpeg compilation:\t\t\t"
+	echo -n -e "- FFmpeg compilation:\t\t\t"
 	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .2; done
 	printf "\b " ; cat $RESFILE
 	echo "FFmpeg compilation: $(cat $RESFILE)" >> $LOGFILE
@@ -28,7 +28,7 @@ runxz() {
 	local RESFILE="$WORKDIR/runxz"
  	/usr/bin/time -f %e -o $RESFILE xz -z -T$(nproc) -7 -Qqq -f $WORKDIR/kernel34.tar &
 	local PID=$!
-	echo -n -e "- XZ compression:\t\t\t\t"
+	echo -n -e "- XZ compression:\t\t\t"
 	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .2; done
 	printf "\b " ; cat $RESFILE
 	echo "XZ compression: $(cat $RESFILE)" >> $LOGFILE
@@ -50,7 +50,7 @@ runpi() {
 	local RESFILE="$WORKDIR/runpi" 
 	/usr/bin/time -f%e -o $RESFILE bc -l -q <<< "scale=6666; 4*a(1)" 1>/dev/null &
 	local PID=$!
-	echo -n -e "- Calculating 6666 digits of pi:\t\t"
+	echo -n -e "- Calculating 6666 digits of pi:\t"
 	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .2; done
 	printf "\b " ; cat $RESFILE
 	echo "Calculating 6666 digits of pi: $(cat $RESFILE)" >> $LOGFILE
@@ -192,10 +192,10 @@ unset arrayz; unset ARRAY
 arrayz=(`awk -F': ' '{print $2}' $LOGFILE`)
 
 for ((i=0 ; i<$(( $NRTESTS - 3)) ; i++)) ; do
-	ARRAY[$i]="$(echo "scale=3; sqrt(${arrayz[$i]}*800)" | bc -l)"
+	ARRAY[$i]="$(echo "scale=3; 5*sqrt(${arrayz[$i]}*80)" | bc -l)"
 done
 for ((i=$(( $NRTESTS - 3 )) ; i<$NRTESTS ; i++)) ; do
-	ARRAY[$i]="$(echo "scale=3; sqrt(${arrayz[$i]}*1000)" | bc -l)"
+	ARRAY[$i]="$(echo "scale=3; 5*sqrt(${arrayz[$i]}*100)" | bc -l)"
 done
 echo "------------------------------------------------------"
 echo "Total time in seconds:"
