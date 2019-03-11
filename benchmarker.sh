@@ -114,7 +114,7 @@ killproc() {
 
 exitproc() {
 	echo -e "Removing temporary files...\n"
-	for i in $WORKDIR/{run*,benchie_*.jpg,kernel34.tar,kernel34.tar.xz} ; do
+	for i in $WORKDIR/{run*,benchie_*.jpg,kernel34.tar,kernel34.tar.xz,darktablerc,data.db} ; do
 		if [ -f $i ] ; then rm $i ; fi
 	done
 	rm $(echo $LOCKFILE)
@@ -161,7 +161,7 @@ fi
 #if [[ -f $WORKDIR/kernel34.tar.xz ]] ; then rm $WORKDIR/kernel34.tar.xz ; fi
 if [[ ! -f $WORKDIR/bench.srw && ! -f $WORKDIR/bench.srw.xmp ]]; then
  	wget --show-progress -qO $WORKDIR/bench.srw http://www.mirada.ch/bench.SRW
- 	wget -qO $WORKDIR/bench.srw.xmp http://www.mirada.ch/bench.SRW.xmp
+ 	wget --show-progress -qO $WORKDIR/bench.srw.xmp http://www.mirada.ch/bench.SRW.xmp
 fi
 if [[ ! -f $WORKDIR/ffmpeg.tar.bz2 ]]; then
 	wget --show-progress -qO $WORKDIR/ffmpeg.tar.bz2 https://ffmpeg.org/releases/ffmpeg-4.1.tar.bz2
@@ -192,10 +192,10 @@ unset arrayz; unset ARRAY
 arrayz=(`awk -F': ' '{print $2}' $LOGFILE`)
 
 for ((i=0 ; i<$(( $NRTESTS - 3)) ; i++)) ; do
-	ARRAY[$i]="$(echo "scale=3; 5*sqrt(${arrayz[$i]}*80)" | bc -l)"
+	ARRAY[$i]="$(echo "scale=3; 3*sqrt(${arrayz[$i]}*80)" | bc -l)"
 done
 for ((i=$(( $NRTESTS - 3 )) ; i<$NRTESTS ; i++)) ; do
-	ARRAY[$i]="$(echo "scale=3; 5*sqrt(${arrayz[$i]}*100)" | bc -l)"
+	ARRAY[$i]="$(echo "scale=3; 3*sqrt(${arrayz[$i]}*100)" | bc -l)"
 done
 echo "------------------------------------------------------"
 echo "Total time in seconds:"
