@@ -135,10 +135,11 @@ if [[ -z $1 ]] ; then
 	exit 1
 fi
 
-if [[ ! -d $1 ]] ; then
-	read -p "The specified directory does not exist. Create it (y/N)? " DCHOICE
+[[ "${WORKDIR:0:1}" != "/" ]] && WORKDIR="$PWD/$WORKDIR"
+if [[ ! -d "$WORKDIR" ]] ; then
+	read -p "The specified directory $WORKDIR does not exist. Create it (y/N)? " DCHOICE
 	if [[ $DCHOICE = "y" || $DCHOICE = "Y" ]] ; then
-		mkdir $WORKDIR
+		mkdir -p $WORKDIR
 	else
 		exit 1
 	fi
