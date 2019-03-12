@@ -125,13 +125,10 @@ export LANG=C
 WORKDIR="$1"
 VER="v0.6"
 CDATE=`date +%F-%H%M`
-#PGID=$(ps -o pgid= $PID | tr -d ' ')
 LOGFILE="$WORKDIR/benchie_${CDATE}.log"
 RAMSIZE=$(( `awk '/MemAvailable/{print $2}' /proc/meminfo` / 1024 ))
 NRTESTS=8
 SYSINFO=`inxi -c0 -v | sed "s/Up:.*//;s/inxi:.*//;s/Storage:.*//"`
-
-echo "$LOCKFILE" >/dev/null
 
 if [[ -z $1 ]] ; then
 	echo "Please specify the full path for the temporary directory! Aborting."
