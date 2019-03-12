@@ -123,7 +123,7 @@ exitproc() {
 set -e
 export LANG=C
 WORKDIR="$1"
-VER="v0.5"
+VER="v0.6"
 CDATE=`date +%F-%H%M`
 #PGID=$(ps -o pgid= $PID | tr -d ' ')
 LOGFILE="$WORKDIR/benchie_${CDATE}.log"
