@@ -14,7 +14,7 @@ runffm() {
 	--disable-amf --disable-cuvid  --disable-d3d11va --disable-dxva2
 	/usr/bin/time -f %e -o $RESFILE make -s -j$(nproc) &>/dev/null &
 	local PID=$!
-	echo -n -e "- FFmpeg compilation:\t\t\t"
+	echo -n -e "* FFmpeg compilation:\t\t\t"
 	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .2; done
 	printf "\b " ; cat $RESFILE
 	echo "FFmpeg compilation: $(cat $RESFILE)" >> $LOGFILE
@@ -28,7 +28,7 @@ runxz() {
 	local RESFILE="$WORKDIR/runxz"
  	/usr/bin/time -f %e -o $RESFILE xz -z -T$(nproc) -7 -Qqq -f $WORKDIR/kernel34.tar &
 	local PID=$!
-	echo -n -e "- XZ compression:\t\t\t"
+	echo -n -e "* XZ compression:\t\t\t"
 	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .2; done
 	printf "\b " ; cat $RESFILE
 	echo "XZ compression: $(cat $RESFILE)" >> $LOGFILE
@@ -39,7 +39,7 @@ runperf() {
 	local RESFILE="$WORKDIR/runperf"	
 	perf bench -f simple sched messaging -p -t -g 25 -l 10000 1> $RESFILE &
 	local PID=$!
-	echo -n -e "- Perf sched:\t\t\t\t"
+	echo -n -e "* Perf sched:\t\t\t\t"
 	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .2; done
 	printf "\b " ; cat $RESFILE
 	echo "Perf sched: $(cat $RESFILE)" >> $LOGFILE
@@ -50,7 +50,7 @@ runpi() {
 	local RESFILE="$WORKDIR/runpi" 
 	/usr/bin/time -f%e -o $RESFILE bc -l -q <<< "scale=6666; 4*a(1)" 1>/dev/null &
 	local PID=$!
-	echo -n -e "- Calculating 6666 digits of pi:\t"
+	echo -n -e "* Calculating 6666 digits of pi:\t"
 	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .2; done
 	printf "\b " ; cat $RESFILE
 	echo "Calculating 6666 digits of pi: $(cat $RESFILE)" >> $LOGFILE
@@ -62,7 +62,7 @@ rundarkt() {
 	darktable-cli $WORKDIR/bench.srw $WORKDIR/benchie_$CDATE.jpg --core --tmpdir $WORKDIR \
 	--configdir $WORKDIR --disable-opencl -d perf 2>/dev/null | awk '/dev_process_export/{print $1}' > $RESFILE &
 	local PID=$!
-	echo -n -e "- Darktable RAW conversion:\t\t"
+	echo -n -e "* Darktable RAW conversion:\t\t"
 	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .2; done
 	sed -i 's/.\{3\}$//;s/,/./' $RESFILE
 	printf "\b " ; cat $RESFILE
@@ -75,7 +75,7 @@ runsysb1() {
  	/usr/bin/time -f %e -o $RESFILE sysbench --threads=$(nproc) --verbosity=0 --events=20000 \
  	--time=0 cpu run --cpu-max-prime=50000 &
 	local PID=$!	
-	echo -n -e "- Sysbench CPU:\t\t\t\t"
+	echo -n -e "* Sysbench CPU:\t\t\t\t"
 	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .2; done
 	printf "\b " ; cat $RESFILE
 	echo "Sysbench CPU: $(cat $RESFILE)" >> $LOGFILE
@@ -87,7 +87,7 @@ runsysb2() {
  	/usr/bin/time -f %e -o $RESFILE sysbench --threads=$(nproc) --verbosity=0 --time=0 \
  	memory run --memory-total-size=80G --memory-block-size=4K --memory-oper=write --memory-access-mode=rnd &>/dev/null &
 	local PID=$!	
-	echo -n -e "- Sysbench RAM write:\t\t\t"
+	echo -n -e "* Sysbench RAM write:\t\t\t"
 	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .2; done
 	printf "\b " ; cat $RESFILE
 	echo "Sysbench RAM write: $(cat $RESFILE)" >> $LOGFILE
@@ -100,7 +100,7 @@ runsysb3() {
  	memory run --memory-total-size=80G --memory-block-size=4K --memory-oper=read \
  	--memory-access-mode=rnd &>/dev/null &
 	local PID=$!	
-	echo -n -e "- Sysbench RAM read:\t\t\t"
+	echo -n -e "* Sysbench RAM read:\t\t\t"
 	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .2; done
 	printf "\b " ; cat $RESFILE
 	echo "Sysbench RAM read: $(cat $RESFILE)" >> $LOGFILE
@@ -197,15 +197,17 @@ done
 for ((i=$(( $NRTESTS - 3 )) ; i<$NRTESTS ; i++)) ; do
 	ARRAY[$i]="$(echo "scale=3; 3*sqrt(${arrayz[$i]}*100)" | bc -l)"
 done
+
+TTIME="$(echo "${arrayz[@]}" | sed 's/ /+/g' | bc)"
+INTSCORE="$(IFS="+" ; bc <<< "scale=3; ${ARRAY[*]}")"
+SCORE="$(bc <<< "scale=3; $INTSCORE / $NRTESTS")"
 echo "------------------------------------------------------"
 echo "Total time in seconds:"
 echo "------------------------------------------------------"
-echo "${arrayz[@]}" | sed 's/ /+/g' | bc
+echo $TTIME ; echo "Total time (s): $TTIME" >> $LOGFILE
 echo "------------------------------------------------------"
 echo "Total score (lower is better):"
 echo "------------------------------------------------------"
-INTSCORE="$(IFS="+" ; bc <<< "scale=3; ${ARRAY[*]}")"
-SCORE="$(bc <<< "scale=3; $INTSCORE / $NRTESTS")"
 echo $SCORE ; echo "Total score: $SCORE" >> $LOGFILE
 echo $SYSINFO >> $LOGFILE
 echo "======================================================"
