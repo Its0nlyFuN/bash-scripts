@@ -4,7 +4,7 @@
 # Richard Gladman, William Pursell, SGS, mbb, mbod, Manjaro Forum, StackOverflow
 
 runffm() {
-	if [[ -d $WORKDIR/ffmpeg-4.1 ]] ; then rm -rf $WORKDIR/ffmpeg-4.1 ]] ; fi
+	if [[ -d $WORKDIR/ffmpeg-4.1 ]] ; then rm -rf $WORKDIR/ffmpeg-4.1 ; fi
 	tar xf $WORKDIR/ffmpeg.tar.bz2 -C $WORKDIR
 	cd $WORKDIR/ffmpeg-4.1
 	local RESFILE="$WORKDIR/runffm"
