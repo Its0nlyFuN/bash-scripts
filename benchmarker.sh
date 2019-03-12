@@ -90,7 +90,7 @@ runsysb2() {
 	echo -n -e "- Sysbench RAM write:\t\t\t"
 	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .2; done
 	printf "\b " ; cat $RESFILE
-	echo "Sysbench RAM: $(cat $RESFILE)" >> $LOGFILE
+	echo "Sysbench RAM write: $(cat $RESFILE)" >> $LOGFILE
 	return 0
 }
 
@@ -103,7 +103,7 @@ runsysb3() {
 	echo -n -e "- Sysbench RAM read:\t\t\t"
 	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .2; done
 	printf "\b " ; cat $RESFILE
-	echo "Sysbench RAM: $(cat $RESFILE)" >> $LOGFILE
+	echo "Sysbench RAM read: $(cat $RESFILE)" >> $LOGFILE
 	return 0
 }
 
