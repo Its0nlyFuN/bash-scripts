@@ -125,7 +125,6 @@ export LANG=C
 WORKDIR="$1"
 VER="v0.6"
 CDATE=`date +%F-%H%M`
-LOGFILE="$WORKDIR/benchie_${CDATE}.log"
 RAMSIZE=$(( `awk '/MemAvailable/{print $2}' /proc/meminfo` / 1024 ))
 NRTESTS=8
 SYSINFO=`inxi -c0 -v | sed "s/Up:.*//;s/inxi:.*//;s/Storage:.*//"`
@@ -144,6 +143,8 @@ if [[ ! -d "$WORKDIR" ]] ; then
 		exit 1
 	fi
 fi
+
+LOGFILE="$WORKDIR/benchie_${CDATE}.log"
 LOCKFILE=`mktemp $WORKDIR/benchie.XXXX`
 
 read -p "It is recommended to drop the caches before starting, do you want \
