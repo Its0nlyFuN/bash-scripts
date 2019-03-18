@@ -26,7 +26,7 @@ runffm() {
 runxz() {
 	gunzip -k -f -q $WORKDIR/kernel34.tar.gz
 	local RESFILE="$WORKDIR/runxz"
- 	/usr/bin/time -f %e -o $RESFILE xz -z -T$(nproc) -7 -Qqq -f $WORKDIR/kernel34.tar &
+ 	/usr/bin/time -f %e -o $RESFILE xz -z -T$(nproc) --lzma2=preset=7e,dict=8M,pb=0 -Qqq -f $WORKDIR/kernel34.tar &
 	local PID=$!
 	echo -n -e "* XZ compression:\t\t\t"
 	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .2; done
@@ -191,10 +191,10 @@ unset arrayz; unset ARRAY
 arrayz=(`awk -F': ' '{print $2}' $LOGFILE`)
 
 for ((i=0 ; i<$(( $NRTESTS - 3)) ; i++)) ; do
-	ARRAY[$i]="$(echo "scale=3; 3*sqrt(${arrayz[$i]}*80)" | bc -l)"
+	ARRAY[$i]="$(echo "scale=3; sqrt(${arrayz[$i]}*800)" | bc -l)"
 done
 for ((i=$(( $NRTESTS - 3 )) ; i<$NRTESTS ; i++)) ; do
-	ARRAY[$i]="$(echo "scale=3; 3*sqrt(${arrayz[$i]}*100)" | bc -l)"
+	ARRAY[$i]="$(echo "scale=3; sqrt(${arrayz[$i]}*1000)" | bc -l)"
 done
 
 TTIME="$(echo "${arrayz[@]}" | sed 's/ /+/g' | bc)"
