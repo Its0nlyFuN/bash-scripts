@@ -24,9 +24,9 @@ runffm() {
 }
 
 runxz() {
-	gunzip -k -f -q $WORKDIR/kernel34.tar.gz
+	gunzip -k -f -q $WORKDIR/kernel44.tar.gz
 	local RESFILE="$WORKDIR/runxz"
- 	/usr/bin/time -f %e -o $RESFILE xz -z -T$(nproc) --lzma2=preset=7e,dict=8M,pb=0 -Qqq -f $WORKDIR/kernel34.tar &
+ 	/usr/bin/time -f %e -o $RESFILE xz -z -T$(nproc) --lzma2=preset=6e,pb=0 -Qqq -f $WORKDIR/kernel44.tar &
 	local PID=$!
 	echo -n -e "* XZ compression:\t\t\t"
 	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .2; done
@@ -114,7 +114,7 @@ killproc() {
 
 exitproc() {
 	echo -e "Removing temporary files...\n"
-	for i in $WORKDIR/{run*,benchie_*.jpg,kernel34.tar,kernel34.tar.xz,darktablerc,data.db} ; do
+	for i in $WORKDIR/{run*,benchie_*.jpg,kernel44.tar.xz,darktablerc,data.db} ; do
 		if [ -f $i ] ; then rm $i ; fi
 	done
 	rm $(echo $LOCKFILE)
@@ -154,10 +154,9 @@ if [[ $DCHOICE = "y" || $DCHOICE = "Y" ]]; then
 fi
 
 echo -e "Checking and downloading missing test files...\n"
-if [[ ! -f $WORKDIR/kernel34.tar.gz ]]; then
-	wget --show-progress -qO $WORKDIR/kernel34.tar.gz https://cdn.kernel.org/pub/linux/kernel/v3.x/linux-3.4.tar.gz
+if [[ ! -f $WORKDIR/kernel44.tar.gz ]]; then
+	wget --show-progress -qO $WORKDIR/kernel44.tar.gz https://cdn.kernel.org/pub/linux/kernel/v4.x/linux-4.4.tar.gz
 fi
-#if [[ -f $WORKDIR/kernel34.tar.xz ]] ; then rm $WORKDIR/kernel34.tar.xz ; fi
 if [[ ! -f $WORKDIR/bench.srw && ! -f $WORKDIR/bench.srw.xmp ]]; then
  	wget --show-progress -qO $WORKDIR/bench.srw http://www.mirada.ch/bench.SRW
  	wget --show-progress -qO $WORKDIR/bench.srw.xmp http://www.mirada.ch/bench.SRW.xmp
