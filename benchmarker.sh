@@ -24,9 +24,9 @@ runffm() {
 }
 
 runxz() {
-	gunzip -k -f -q $WORKDIR/kernel44.tar.gz
+	gunzip -k -f -q $WORKDIR/kernel41.tar.gz
 	local RESFILE="$WORKDIR/runxz"
- 	/usr/bin/time -f %e -o $RESFILE xz -z -T$(nproc) --lzma2=preset=6e,pb=0 -Qqq -f $WORKDIR/kernel44.tar &
+ 	/usr/bin/time -f %e -o $RESFILE xz -z -T$(nproc) --lzma2=preset=6e,pb=0 -Qqq -f $WORKDIR/kernel41.tar &
 	local PID=$!
 	echo -n -e "* XZ compression:\t\t\t"
 	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .2; done
@@ -37,12 +37,24 @@ runxz() {
 
 runperf() {
 	local RESFILE="$WORKDIR/runperf"	
-	perf bench -f simple sched messaging -p -t -g 25 -l 10000 1> $RESFILE &
+	perf bench -f simple sched messaging -p -t -g 30 -l 10000 1> $RESFILE &
 	local PID=$!
 	echo -n -e "* Perf sched:\t\t\t\t"
-	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .2; done
+	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .5; done
 	printf "\b " ; cat $RESFILE
 	echo "Perf sched: $(cat $RESFILE)" >> $LOGFILE
+	return 0
+}
+
+runperf2() {
+	local RESFILE="$WORKDIR/runperf2"	
+	/usr/bin/time -f%e -o $RESFILE perf bench numa mem -t $(nproc) -T 512 -p 1 -s 0 \
+	-l 100 -G 128 -zZ0q &>/dev/null &
+	local PID=$!
+	echo -n -e "* Perf NUMA Mem:\t\t\t"
+	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .2; done
+	printf "\b " ; cat $RESFILE
+	echo "Perf NUMA Mem: $(cat $RESFILE)" >> $LOGFILE
 	return 0
 }
 
@@ -114,7 +126,7 @@ killproc() {
 
 exitproc() {
 	echo -e "Removing temporary files...\n"
-	for i in $WORKDIR/{run*,benchie_*.jpg,kernel44.tar.xz,darktablerc,data.db} ; do
+	for i in $WORKDIR/{run*,benchie_*.jpg,kernel41.tar.xz,darktablerc,data.db} ; do
 		if [ -f $i ] ; then rm $i ; fi
 	done
 	rm $(echo $LOCKFILE)
@@ -126,7 +138,8 @@ WORKDIR="$1"
 VER="v0.6"
 CDATE=`date +%F-%H%M`
 RAMSIZE=$(( `awk '/MemAvailable/{print $2}' /proc/meminfo` / 1024 ))
-NRTESTS=8
+#NUMASIZE=$(( $RAMSIZE / 2 / $(nproc) ))
+NRTESTS=9
 SYSINFO=`inxi -c0 -v | sed "s/Up:.*//;s/inxi:.*//;s/Storage:.*//"`
 
 if [[ -z $1 ]] ; then
@@ -154,8 +167,8 @@ if [[ $DCHOICE = "y" || $DCHOICE = "Y" ]]; then
 fi
 
 echo -e "Checking and downloading missing test files...\n"
-if [[ ! -f $WORKDIR/kernel44.tar.gz ]]; then
-	wget --show-progress -qO $WORKDIR/kernel44.tar.gz https://cdn.kernel.org/pub/linux/kernel/v4.x/linux-4.4.tar.gz
+if [[ ! -f $WORKDIR/kernel41.tar.gz ]]; then
+	wget --show-progress -qO $WORKDIR/kernel41.tar.gz https://cdn.kernel.org/pub/linux/kernel/v4.x/linux-4.1.tar.gz
 fi
 if [[ ! -f $WORKDIR/bench.srw && ! -f $WORKDIR/bench.srw.xmp ]]; then
  	wget --show-progress -qO $WORKDIR/bench.srw http://www.mirada.ch/bench.SRW
@@ -176,6 +189,7 @@ echo "======================================================"
 trap killproc INT
 trap exitproc EXIT
 runperf ; sleep 2
+runperf2 ; sleep 2
 runpi ; sleep 2
 runsysb1 ; sleep 2
 runsysb2 ; sleep 2
