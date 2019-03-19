@@ -150,7 +150,7 @@ exitproc() {
 set -e
 export LANG=C
 WORKDIR="$1"
-VER="v0.6"
+VER="v0.7"
 CDATE=`date +%F-%H%M`
 RAMSIZE=$(( `awk '/MemAvailable/{print $2}' /proc/meminfo` / 1024 ))
 #NUMASIZE=$(( $RAMSIZE / 2 / $(nproc) ))
