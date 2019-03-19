@@ -35,9 +35,23 @@ runxz() {
 	return 0
 }
 
+runblend() {
+	unzip -qqj $WORKDIR/blender.zip -d $WORKDIR/blender
+	local RESFILE="$WORKDIR/runblend"
+	local TMP="$WORKDIR"
+	local BLENDER_USER_CONFIG="$WORKDIR"
+	/usr/bin/time -f %e -o $RESFILE blender -b $WORKDIR/blender/scene-Helicopter-27.blend -o $WORKDIR/blenderheli.png -f 1 --verbose 0 &>/dev/null &
+	local PID=$!
+	echo -n -e "* Blender render:\t\t\t"
+	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .2; done
+	printf "\b " ; cat $RESFILE
+	echo "Blender render: $(cat $RESFILE)" >> $LOGFILE
+	return 0
+}
+
 runperf() {
 	local RESFILE="$WORKDIR/runperf"	
-	perf bench -f simple sched messaging -p -t -g 30 -l 10000 1> $RESFILE &
+	perf bench -f simple sched messaging -p -t -g 25 -l 10000 1> $RESFILE &
 	local PID=$!
 	echo -n -e "* Perf sched:\t\t\t\t"
 	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .5; done
@@ -49,7 +63,7 @@ runperf() {
 runperf2() {
 	local RESFILE="$WORKDIR/runperf2"	
 	/usr/bin/time -f%e -o $RESFILE perf bench numa mem -t $(nproc) -T 512 -p 1 -s 0 \
-	-l 100 -G 128 -zZ0q &>/dev/null &
+	-l 200 -zZq &>/dev/null &
 	local PID=$!
 	echo -n -e "* Perf NUMA Mem:\t\t\t"
 	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .2; done
@@ -85,7 +99,7 @@ rundarkt() {
 runsysb1() {
 	local RESFILE="$WORKDIR/runsysb1"
  	/usr/bin/time -f %e -o $RESFILE sysbench --threads=$(nproc) --verbosity=0 --events=20000 \
- 	--time=0 cpu run --cpu-max-prime=50000 &
+ 	--time=0 cpu run --cpu-max-prime=60000 &
 	local PID=$!	
 	echo -n -e "* Sysbench CPU:\t\t\t\t"
 	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .2; done
@@ -126,8 +140,9 @@ killproc() {
 
 exitproc() {
 	echo -e "Removing temporary files...\n"
-	for i in $WORKDIR/{run*,benchie_*.jpg,kernel41.tar.xz,darktablerc,data.db} ; do
+	for i in $WORKDIR/{run*,benchie_*.jpg,kernel41.tar.xz,blender*.png,darktablerc,data.db,blender} ; do
 		if [ -f $i ] ; then rm $i ; fi
+		if [ -d $i ] ; then rm -r $i ; fi
 	done
 	rm $(echo $LOCKFILE)
 }
@@ -139,7 +154,7 @@ VER="v0.6"
 CDATE=`date +%F-%H%M`
 RAMSIZE=$(( `awk '/MemAvailable/{print $2}' /proc/meminfo` / 1024 ))
 #NUMASIZE=$(( $RAMSIZE / 2 / $(nproc) ))
-NRTESTS=9
+NRTESTS=10
 SYSINFO=`inxi -c0 -v | sed "s/Up:.*//;s/inxi:.*//;s/Storage:.*//"`
 
 if [[ -z $1 ]] ; then
@@ -177,6 +192,9 @@ fi
 if [[ ! -f $WORKDIR/ffmpeg.tar.bz2 ]]; then
 	wget --show-progress -qO $WORKDIR/ffmpeg.tar.bz2 https://ffmpeg.org/releases/ffmpeg-4.1.tar.bz2
 fi
+if [[ ! -f $WORKDIR/blender.zip ]]; then
+	wget --show-progress -qO $WORKDIR/blender.zip https://download.blender.org/demo/test/Demo_274.zip
+fi
 
 printf "\n"
 echo "======__==__ ============================ _____======="
@@ -197,16 +215,17 @@ runsysb3 ; sleep 2
 runxz ; sleep 2
 runffm ; sleep 2
 rundarkt ; sleep 2
+runblend ; sleep 2
 
 unset arrayz; unset ARRAY
 # arrayn not used currently
 # arrayn=(`awk -F': ' '{print $1}' $LOGFILE`)
 arrayz=(`awk -F': ' '{print $2}' $LOGFILE`)
 
-for ((i=0 ; i<$(( $NRTESTS - 3)) ; i++)) ; do
+for ((i=0 ; i<$(( $NRTESTS - 4)) ; i++)) ; do
 	ARRAY[$i]="$(echo "scale=3; sqrt(${arrayz[$i]}*800)" | bc -l)"
 done
-for ((i=$(( $NRTESTS - 3 )) ; i<$NRTESTS ; i++)) ; do
+for ((i=$(( $NRTESTS - 4 )) ; i<$NRTESTS ; i++)) ; do
 	ARRAY[$i]="$(echo "scale=3; sqrt(${arrayz[$i]}*1000)" | bc -l)"
 done
 
