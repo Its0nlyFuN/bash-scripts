@@ -51,7 +51,7 @@ runblend() {
 
 runargon() {
 	local RESFILE="$WORKDIR/runargon"
-	argon2 BenchieSalt -id -t 50 -m 20 -p $(nproc) <<< $(dd if=/dev/urandom bs=1 count=64 status=none) | awk '/seconds/{print $1}' 1> $RESFILE
+	/usr/bin/time -f %e -o $RESFILE argon2 BenchieSalt -id -t 50 -m 20 -p $(nproc) &>/dev/null <<< $(dd if=/dev/urandom bs=1 count=64 status=none) &
 	local PID=$!
 	echo -n -e "* Argon2 hashing:\t\t\t"
 	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .2; done
@@ -61,7 +61,7 @@ runargon() {
 }
 
 runperf() {
-	local RESFILE="$WORKDIR/runperf"	
+	local RESFILE="$WORKDIR/runperf"
 	perf bench -f simple sched messaging -p -t -g 25 -l 10000 1> $RESFILE &
 	local PID=$!
 	echo -n -e "* Perf sched:\t\t\t\t"
