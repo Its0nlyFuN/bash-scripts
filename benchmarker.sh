@@ -71,18 +71,6 @@ runperf() {
 	return 0
 }
 
-runperf2() {
-	local RESFILE="$WORKDIR/runperf2"	
-	/usr/bin/time -f%e -o $RESFILE perf bench numa mem -t $(nproc) -T 512 -p 1 -s 0 \
-	-l 200 -zZq &>/dev/null &
-	local PID=$!
-	echo -n -e "* Perf NUMA Mem:\t\t\t"
-	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .2; done
-	printf "\b " ; cat $RESFILE
-	echo "Perf NUMA Mem: $(cat $RESFILE)" >> $LOGFILE
-	return 0
-}
-
 runpi() {
 	local RESFILE="$WORKDIR/runpi" 
 	/usr/bin/time -f%e -o $RESFILE bc -l -q <<< "scale=6666; 4*a(1)" 1>/dev/null &
@@ -164,7 +152,7 @@ WORKDIR="$1"
 VER="v0.7"
 CDATE=`date +%F-%H%M`
 RAMSIZE=$(( `awk '/MemAvailable/{print $2}' /proc/meminfo` / 1024 ))
-NRTESTS=11
+NRTESTS=10
 SYSINFO=`inxi -c0 -v | sed "s/Up:.*//;s/inxi:.*//;s/Storage:.*//"`
 
 if [[ -z $1 ]] ; then
@@ -217,7 +205,6 @@ echo "======================================================"
 trap killproc INT
 trap exitproc EXIT
 runperf ; sleep 2
-runperf2 ; sleep 2
 runpi ; sleep 2
 runargon ; sleep 2
 runsysb1 ; sleep 2
