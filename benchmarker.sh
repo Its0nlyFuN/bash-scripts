@@ -49,26 +49,25 @@ runblend() {
 	return 0
 }
 
+runargon() {
+	local RESFILE="$WORKDIR/runargon"
+	/usr/bin/time -f %e -o $RESFILE argon2 BenchieSalt -id -t 50 -m 20 -p $(nproc) &>/dev/null <<< $(dd if=/dev/urandom bs=1 count=64 status=none) &
+	local PID=$!
+	echo -n -e "* Argon2 hashing:\t\t\t"
+	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .2; done
+	printf "\b " ; cat $RESFILE
+	echo "Argon2 hashing: $(cat $RESFILE)" >> $LOGFILE
+	return 0
+}
+
 runperf() {
-	local RESFILE="$WORKDIR/runperf"	
+	local RESFILE="$WORKDIR/runperf"
 	perf bench -f simple sched messaging -p -t -g 25 -l 10000 1> $RESFILE &
 	local PID=$!
 	echo -n -e "* Perf sched:\t\t\t\t"
 	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .5; done
 	printf "\b " ; cat $RESFILE
 	echo "Perf sched: $(cat $RESFILE)" >> $LOGFILE
-	return 0
-}
-
-runperf2() {
-	local RESFILE="$WORKDIR/runperf2"	
-	/usr/bin/time -f%e -o $RESFILE perf bench numa mem -t $(nproc) -T 512 -p 1 -s 0 \
-	-l 200 -zZq &>/dev/null &
-	local PID=$!
-	echo -n -e "* Perf NUMA Mem:\t\t\t"
-	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .2; done
-	printf "\b " ; cat $RESFILE
-	echo "Perf NUMA Mem: $(cat $RESFILE)" >> $LOGFILE
 	return 0
 }
 
@@ -153,7 +152,6 @@ WORKDIR="$1"
 VER="v0.7"
 CDATE=`date +%F-%H%M`
 RAMSIZE=$(( `awk '/MemAvailable/{print $2}' /proc/meminfo` / 1024 ))
-#NUMASIZE=$(( $RAMSIZE / 2 / $(nproc) ))
 NRTESTS=10
 SYSINFO=`inxi -c0 -v | sed "s/Up:.*//;s/inxi:.*//;s/Storage:.*//"`
 
@@ -207,8 +205,8 @@ echo "======================================================"
 trap killproc INT
 trap exitproc EXIT
 runperf ; sleep 2
-runperf2 ; sleep 2
 runpi ; sleep 2
+runargon ; sleep 2
 runsysb1 ; sleep 2
 runsysb2 ; sleep 2
 runsysb3 ; sleep 2
@@ -231,7 +229,7 @@ done
 
 TTIME="$(echo "${arrayz[@]}" | sed 's/ /+/g' | bc)"
 INTSCORE="$(IFS="+" ; bc <<< "scale=3; ${ARRAY[*]}")"
-SCORE="$(bc <<< "scale=3; $INTSCORE / $NRTESTS")"
+SCORE="$(bc <<< "scale=3; $INTSCORE / ($NRTESTS - 1)")"
 echo "------------------------------------------------------"
 echo "Total time in seconds:"
 echo "------------------------------------------------------"
