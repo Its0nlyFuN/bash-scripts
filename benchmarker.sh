@@ -149,7 +149,7 @@ exitproc() {
 set -e
 export LANG=C
 WORKDIR="$1"
-VER="v0.7"
+VER="v0.8"
 CDATE=`date +%F-%H%M`
 RAMSIZE=$(( `awk '/MemAvailable/{print $2}' /proc/meminfo` / 1024 ))
 NRTESTS=10
