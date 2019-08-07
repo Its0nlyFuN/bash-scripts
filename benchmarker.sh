@@ -72,13 +72,14 @@ runperf() {
 }
 
 runpi() {
-	local RESFILE="$WORKDIR/runpi" 
-	/usr/bin/time -f%e -o $RESFILE bc -l -q <<< "scale=6666; 4*a(1)" 1>/dev/null &
+	local RESFILE="$WORKDIR/runpi"
+	gcc -O3 -march=native $WORKDIR/pi.c -o $WORKDIR/pi -lm -lgmp
+	/usr/bin/time -f%e -o $RESFILE $WORKDIR/pi 50000000 1>/dev/null &
 	local PID=$!
-	echo -n -e "* Calculating 6666 digits of pi:\t"
+	echo -n -e "* Calculating a million digits of pi:\t"
 	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .2; done
 	printf "\b " ; cat $RESFILE
-	echo "Calculating 6666 digits of pi: $(cat $RESFILE)" >> $LOGFILE
+	echo "Calculating a million digits of pi: $(cat $RESFILE)" >> $LOGFILE
 	return 0
 }
 
@@ -139,7 +140,7 @@ killproc() {
 
 exitproc() {
 	echo -e "Removing temporary files...\n"
-	for i in $WORKDIR/{run*,benchie_*.jpg,kernel41.tar.xz,blender*.png,darktablerc,data.db,blender} ; do
+	for i in $WORKDIR/{run*,benchie_*.jpg,kernel41.tar.xz,blender*.png,darktablerc,data.db,blender,pi} ; do
 		if [ -f $i ] ; then rm $i ; fi
 		if [ -d $i ] ; then rm -r $i ; fi
 	done
@@ -149,7 +150,7 @@ exitproc() {
 set -e
 export LANG=C
 WORKDIR="$1"
-VER="v0.8"
+VER="v0.9"
 CDATE=`date +%F-%H%M`
 RAMSIZE=$(( `awk '/MemAvailable/{print $2}' /proc/meminfo` / 1024 ))
 NRTESTS=10
@@ -192,6 +193,9 @@ if [[ ! -f $WORKDIR/ffmpeg.tar.bz2 ]]; then
 fi
 if [[ ! -f $WORKDIR/blender.zip ]]; then
 	wget --show-progress -qO $WORKDIR/blender.zip https://download.blender.org/demo/test/Demo_274.zip
+fi
+if [[ ! -f $WORKDIR/pi.c ]]; then
+	wget --show-progress -qO $WORKDIR/pi.c https://gmplib.org/download/misc/gmp-chudnovsky.c
 fi
 
 printf "\n"

@@ -1,13 +1,13 @@
 # Maintainer: torvic9
 
 pkgname='mini-benchmarker'
-pkgver=0.6.r9.g64d4fe3
+pkgver=0.8.r0.g0d3edce
 pkgrel=1
 pkgdesc='A simple benchmarking script using sysbench, perf etc.'
 url="https://github.com/torvic9/bash-scripts"
 arch=('x86_64')
 licence=('GPL3')
-depends=('make' 'time' 'sysbench' 'perf' 'unzip' 'darktable' 'nasm' 'inxi' 'blender' 'argon2')
+depends=('make' 'time' 'sysbench' 'perf' 'unzip' 'darktable' 'nasm' 'inxi' 'blender' 'argon2' 'gmp')
 source=(git+https://github.com/torvic9/bash-scripts.git)
 sha512sums=('SKIP')
 
