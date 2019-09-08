@@ -62,7 +62,7 @@ runargon() {
 
 runperf() {
 	local RESFILE="$WORKDIR/runperf"
-	perf bench -f simple sched messaging -p -t -g 25 -l 10000 1> $RESFILE &
+	perf bench -f simple sched messaging -p -t -g 20 -l 10000 1> $RESFILE &
 	local PID=$!
 	echo -n -e "* Perf sched:\t\t\t\t"
 	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .5; done
@@ -73,13 +73,13 @@ runperf() {
 
 runpi() {
 	local RESFILE="$WORKDIR/runpi"
-	gcc -O3 -march=native $WORKDIR/pi.c -o $WORKDIR/pi -lm -lgmp
-	/usr/bin/time -f%e -o $RESFILE $WORKDIR/pi 50000000 1>/dev/null &
+	gcc -O3 -march=native $WORKDIR/pi.c -o $WORKDIR/pi -lm -lgmp && sleep 1
+	/usr/bin/time -f%e -o $RESFILE $WORKDIR/pi 66000000 1>/dev/null &
 	local PID=$!
-	echo -n -e "* Calculating a million digits of pi:\t"
+	echo -n -e "* Calculating 66m digits of pi:\t\t"
 	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .2; done
 	printf "\b " ; cat $RESFILE
-	echo "Calculating a million digits of pi: $(cat $RESFILE)" >> $LOGFILE
+	echo "Calculating 66m digits of pi: $(cat $RESFILE)" >> $LOGFILE
 	return 0
 }
 
@@ -99,7 +99,7 @@ rundarkt() {
 runsysb1() {
 	local RESFILE="$WORKDIR/runsysb1"
  	/usr/bin/time -f %e -o $RESFILE sysbench --threads=$(nproc) --verbosity=0 --events=20000 \
- 	--time=0 cpu run --cpu-max-prime=60000 &
+ 	--time=0 cpu run --cpu-max-prime=66000 &
 	local PID=$!	
 	echo -n -e "* Sysbench CPU:\t\t\t\t"
 	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .2; done
@@ -111,7 +111,7 @@ runsysb1() {
 runsysb2() {
 	local RESFILE="$WORKDIR/runsysb2"
  	/usr/bin/time -f %e -o $RESFILE sysbench --threads=$(nproc) --verbosity=0 --time=0 \
- 	memory run --memory-total-size=80G --memory-block-size=4K --memory-oper=write --memory-access-mode=rnd &>/dev/null &
+ 	memory run --memory-total-size=100G --memory-block-size=4K --memory-oper=write --memory-access-mode=rnd &>/dev/null &
 	local PID=$!	
 	echo -n -e "* Sysbench RAM write:\t\t\t"
 	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .2; done
@@ -123,7 +123,7 @@ runsysb2() {
 runsysb3() {
 	local RESFILE="$WORKDIR/runsysb2"
  	/usr/bin/time -f %e -o $RESFILE sysbench --threads=$(nproc) --verbosity=0 --time=0 \
- 	memory run --memory-total-size=80G --memory-block-size=4K --memory-oper=read \
+ 	memory run --memory-total-size=100G --memory-block-size=4K --memory-oper=read \
  	--memory-access-mode=rnd &>/dev/null &
 	local PID=$!	
 	echo -n -e "* Sysbench RAM read:\t\t\t"
@@ -147,14 +147,20 @@ exitproc() {
 	rm $(echo $LOCKFILE)
 }
 
-set -e
+#set -x
 export LANG=C
 WORKDIR="$1"
 VER="v0.9"
 CDATE=`date +%F-%H%M`
-RAMSIZE=$(( `awk '/MemAvailable/{print $2}' /proc/meminfo` / 1024 ))
+RAMSIZE=$(( `awk '/MemTotal/{print $2}' /proc/meminfo` / 1000000 ))
+CPUCORES=`nproc`
+#if [[ $CPUCORES -eq 1 ]] ; then
+#	CPUCORES=2
+#fi
+CPUMHZ=$(lscpu -e=maxmhz | tail -n1)
+CPUGHZ=$(echo "scale=1; ${CPUMHZ%%,*} / 1000" | bc)
 NRTESTS=10
-SYSINFO=`inxi -c0 -v | sed "s/Up:.*//;s/inxi:.*//;s/Storage:.*//"`
+SYSINFO=$(inxi -c0 -v | sed "s/Up:.*//;s/inxi:.*//;s/Storage:.*//")
 
 if [[ -z $1 ]] ; then
 	echo "Please specify the full path for the temporary directory! Aborting."
@@ -178,9 +184,10 @@ read -p "It is recommended to drop the caches before starting, do you want \
 to do that now? Careful, root privileges needed! (y/N)" DCHOICE
 if [[ $DCHOICE = "y" || $DCHOICE = "Y" ]]; then
 	su -c "echo 3 > /proc/sys/vm/drop_caches"
+	sync ; sleep 2
 fi
 
-echo -e "Checking and downloading missing test files...\n"
+echo -e "* Checking and downloading missing test files...\n"
 if [[ ! -f $WORKDIR/kernel41.tar.gz ]]; then
 	wget --show-progress -qO $WORKDIR/kernel41.tar.gz https://cdn.kernel.org/pub/linux/kernel/v4.x/linux-4.1.tar.gz
 fi
@@ -198,7 +205,7 @@ if [[ ! -f $WORKDIR/pi.c ]]; then
 	wget --show-progress -qO $WORKDIR/pi.c https://gmplib.org/download/misc/gmp-chudnovsky.c
 fi
 
-printf "\n"
+#printf "\n"
 echo "======__==__ ============================ _____======="
 echo "=====|  \/  |===== MINI BENCHMARKER =====| ___ ))====="
 echo "=====| |\/| |=====      torvic9     =====| ___ \======"
@@ -223,17 +230,20 @@ unset arrayz; unset ARRAY
 # arrayn not used currently
 # arrayn=(`awk -F': ' '{print $1}' $LOGFILE`)
 arrayz=(`awk -F': ' '{print $2}' $LOGFILE`)
-
+# watch!
+set -x
+# watch!
 for ((i=0 ; i<$(( $NRTESTS - 4)) ; i++)) ; do
-	ARRAY[$i]="$(echo "scale=3; sqrt(${arrayz[$i]}*800)" | bc -l)"
+	ARRAY[$i]="$(echo "scale=3; sqrt(${arrayz[$i]}*8) * (l($CPUCORES) + $CPUGHZ/2)" | bc -l)"
 done
 for ((i=$(( $NRTESTS - 4 )) ; i<$NRTESTS ; i++)) ; do
-	ARRAY[$i]="$(echo "scale=3; sqrt(${arrayz[$i]}*1000)" | bc -l)"
+	ARRAY[$i]="$(echo "scale=3; sqrt(${arrayz[$i]}*10) * (l($CPUCORES) + $CPUGHZ/2)" | bc -l)"
 done
 
-TTIME="$(echo "${arrayz[@]}" | sed 's/ /+/g' | bc)"
+#TTIME="$(echo "${arrayz[@]}" | sed 's/ /+/g' | bc)"
+TTIME="$(IFS="+" ; bc <<< "scale=2; ${arrayz[*]}")"
 INTSCORE="$(IFS="+" ; bc <<< "scale=3; ${ARRAY[*]}")"
-SCORE="$(bc <<< "scale=3; $INTSCORE / ($NRTESTS - 1)")"
+SCORE="$(bc -l <<< "scale=2; $INTSCORE / $NRTESTS")"
 echo "------------------------------------------------------"
 echo "Total time in seconds:"
 echo "------------------------------------------------------"

@@ -1,7 +1,7 @@
 # Maintainer: torvic9
 
 pkgname='mini-benchmarker'
-pkgver=0.8.r0.g0d3edce
+pkgver=0.9.r0.g00dadc4
 pkgrel=1
 pkgdesc='A simple benchmarking script using sysbench, perf etc.'
 url="https://github.com/torvic9/bash-scripts"
