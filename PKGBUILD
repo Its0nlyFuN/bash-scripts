@@ -7,7 +7,8 @@ pkgdesc='A simple benchmarking script using sysbench, perf etc.'
 url="https://github.com/torvic9/bash-scripts"
 arch=('x86_64')
 licence=('GPL3')
-depends=('make' 'time' 'sysbench' 'perf' 'unzip' 'darktable' 'nasm' 'inxi' 'blender' 'argon2' 'gmp')
+depends=('make' 'cmake' 'time' 'sysbench' 'perf' 'unzip' 'darktable' 
+	 'nasm' 'inxi' 'blender' 'argon2' 'gmp' 'mercurial')
 source=(git+https://github.com/torvic9/bash-scripts.git)
 sha512sums=('SKIP')
 
