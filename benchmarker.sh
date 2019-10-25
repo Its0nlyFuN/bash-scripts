@@ -71,9 +71,9 @@ runperf() {
 runpi() {
 	local RESFILE="$WORKDIR/runpi"
 	gcc -O3 -march=native $WORKDIR/pi.c -o $WORKDIR/pi -lm -lgmp && sleep 1
-	/usr/bin/time -f%e -o $RESFILE $WORKDIR/pi 66000000 1>/dev/null &
+	/usr/bin/time -f%e -o $RESFILE $WORKDIR/pi 60000000 1>/dev/null &
 	local PID=$!
-	echo -n -e "* Calculating 66m digits of pi:\t\t"
+	echo -n -e "* Calculating 60m digits of pi:\t\t"
 	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .5; done
 	printf "\b " ; cat $RESFILE
 	echo "Calculating 66m digits of pi: $(cat $RESFILE)" >> $LOGFILE
@@ -96,7 +96,7 @@ rundarkt() {
 runsysb1() {
 	local RESFILE="$WORKDIR/runsysb1"
  	/usr/bin/time -f %e -o $RESFILE sysbench --threads=$CPUCORES --verbosity=0 --events=20000 \
- 	--time=0 cpu run --cpu-max-prime=66000 &
+ 	--time=0 cpu run --cpu-max-prime=60000 &
 	local PID=$!
 	echo -n -e "* Sysbench CPU:\t\t\t\t"
 	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .5; done
@@ -229,20 +229,20 @@ arrayz=(`awk -F': ' '{print $2}' $LOGFILE`)
 # arrayn not used currently
 # arrayn=(`awk -F': ' '{print $1}' $LOGFILE`)
 # watch!
-# set -x
+set -x
 # watch!
 
 for ((i=0 ; i<$(( $NRTESTS - 4)) ; i++)) ; do
-	ARRAY[$i]="$(echo "scale=8; sqrt(${arrayz[$i]} * 80) * l($CPUCORES / 2 + $CPUGHZ)" | bc -l)"
+	ARRAY[$i]="$(echo "scale=10; ${arrayz[$i]} * sqrt(${arrayz[$i]} * 0.3) * l($CPUCORES / 2 + $CPUGHZ)" | bc -l)"
 done
 for ((i=$(( $NRTESTS - 4 )) ; i<$NRTESTS ; i++)) ; do
-	ARRAY[$i]="$(echo "scale=8; sqrt(${arrayz[$i]} * 100) * l($CPUCORES / 2 + $CPUGHZ)" | bc -l)"
+	ARRAY[$i]="$(echo "scale=10; ${arrayz[$i]} * sqrt(${arrayz[$i]} * 0.4) * l($CPUCORES / 2 + $CPUGHZ)" | bc -l)"
 done
 
 #TTIME="$(echo "${arrayz[@]}" | sed 's/ /+/g' | bc)"
 TTIME="$(IFS="+" ; bc <<< "scale=2; ${arrayz[*]}")"
-INTSCORE="$(IFS="+" ; bc <<< "scale=8; ${ARRAY[*]}")"
-SCORE="$(bc -l <<< "scale=2; $INTSCORE / $NRTESTS")"
+INTSCORE="$(IFS="+" ; bc <<< "scale=10; ${ARRAY[*]}")"
+SCORE="$(bc -l <<< "scale=2; 1000 - ($INTSCORE / $NRTESTS)")"
 echo "--------------------------------------------------"
 echo "Total time in seconds:"
 echo "--------------------------------------------------"
