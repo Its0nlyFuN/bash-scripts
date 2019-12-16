@@ -5,19 +5,8 @@
 
 runffm() {
 	cd $WORKDIR
-	tar xf ffmpeg.tar.gz
 	cd ffmpeg-1529dfb
 	local RESFILE="$WORKDIR/runffm"
-	./configure --prefix=/tmp --disable-debug --enable-static --enable-stripping \
-	  --disable-ladspa --disable-programs --disable-ffplay --disable-ffprobe \
-	  --disable-doc --disable-network --disable-protocols --disable-lzma \
-	  --disable-amf --disable-cuda-llvm --disable-cuvid --disable-d3d11va --disable-dxva2 \
-	  --disable-nvdec --disable-nvenc --disable-vaapi --disable-vdpau --disable-sdl2 \
-	  --disable-schannel --disable-securetransport --enable-libfontconfig \
-	  --enable-libfreetype --enable-libspeex --enable-libvpx --enable-libopus --enable-libvorbis \
-	  --enable-libx264 --enable-libx265 --enable-opengl --enable-libdrm --enable-gpl \
-	  --enable-gmp --enable-gnutls --disable-avx512 --disable-fma4 --disable-autodetect \
-	  --enable-version3 &>/dev/null
 	/usr/bin/time -f %e -o $RESFILE make -s -j${CPUCORES} &>/dev/null &
 	local PID=$!
 	echo -n -e "\n* ffmpeg compilation:\t\t\t"
@@ -28,9 +17,8 @@ runffm() {
 }
 
 runxz() {
-	gunzip -k -f -q $WORKDIR/kernel44.tar.gz
 	local RESFILE="$WORKDIR/runxz"
- 	/usr/bin/time -f %e -o $RESFILE xz -z -T${CPUCORES} --lzma2=preset=6e,pb=0 -Qqq -f $WORKDIR/kernel44.tar &
+ 	/usr/bin/time -f %e -o $RESFILE xz -z -T${CPUCORES} --lzma2=preset=7e,pb=0 -Qqq -f $WORKDIR/kernel44.tar &
 	local PID=$!
 	echo -n -e "* XZ compression:\t\t\t"
 	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .5; done
@@ -40,7 +28,6 @@ runxz() {
 }
 
 runblend() {
-	unzip -qqj $WORKDIR/blender.zip -d $WORKDIR/blender
 	local RESFILE="$WORKDIR/runblend"
 	local TMP="$WORKDIR"
 	local BLENDER_USER_CONFIG="$WORKDIR"
@@ -64,9 +51,9 @@ runargon() {
 	return 0
 }
 
-runperf() {
+runperf1() {
 	local RESFILE="$WORKDIR/runperf"
-	perf bench -f simple sched messaging -p -g 20 -l 10000 1> $RESFILE &
+	perf bench -f simple sched messaging -p -t -g 25 -l 10000 1> $RESFILE &
 	local PID=$!
 	echo -n -e "* Perf sched:\t\t\t\t"
 	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep 1; done
@@ -75,9 +62,19 @@ runperf() {
 	return 0
 }
 
+runperf2() {
+	local RESFILE="$WORKDIR/runperf"
+	/usr/bin/time -f %e -o $RESFILE perf bench -f simple mem memset --nr_loops 100 --size 1GB -f default &>/dev/null &
+	local PID=$!
+	echo -n -e "* Perf memset:\t\t\t\t"
+	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep 1; done
+	printf "\b " ; cat $RESFILE
+	echo "Perf sched: $(cat $RESFILE)" >> $LOGFILE
+	return 0
+}
+
 runpi() {
 	local RESFILE="$WORKDIR/runpi"
-	gcc -O3 -march=native $WORKDIR/pi.c -o $WORKDIR/pi -lm -lgmp && sleep 1
 	/usr/bin/time -f%e -o $RESFILE $WORKDIR/pi 60000000 1>/dev/null &
 	local PID=$!
 	echo -n -e "* Calculating 60m digits of pi:\t\t"
@@ -112,23 +109,22 @@ runsysb1() {
 	return 0
 }
 
+#runsysb2() {
+#	local RESFILE="$WORKDIR/runsysb2"
+# 	/usr/bin/time -f %e -o $RESFILE sysbench --threads=$CPUCORES --verbosity=0 --time=0 \
+# 	memory run --memory-total-size=128G --memory-block-size=4K --memory-oper=write --memory-access-mode=seq &>/dev/null &
+#	local PID=$!
+#	echo -n -e "* Sysbench RAM write:\t\t\t"
+#	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .5; done
+#	printf "\b " ; cat $RESFILE
+#	echo "Sysbench RAM write: $(cat $RESFILE)" >> $LOGFILE
+#	return 0
+#}
+
 runsysb2() {
 	local RESFILE="$WORKDIR/runsysb2"
  	/usr/bin/time -f %e -o $RESFILE sysbench --threads=$CPUCORES --verbosity=0 --time=0 \
- 	memory run --memory-total-size=100G --memory-block-size=512K --memory-oper=write --memory-access-mode=rnd &>/dev/null &
-	local PID=$!
-	echo -n -e "* Sysbench RAM write:\t\t\t"
-	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .5; done
-	printf "\b " ; cat $RESFILE
-	echo "Sysbench RAM write: $(cat $RESFILE)" >> $LOGFILE
-	return 0
-}
-
-runsysb3() {
-	local RESFILE="$WORKDIR/runsysb2"
- 	/usr/bin/time -f %e -o $RESFILE sysbench --threads=$CPUCORES --verbosity=0 --time=0 \
- 	memory run --memory-total-size=100G --memory-block-size=4K --memory-oper=read \
- 	--memory-access-mode=rnd &>/dev/null &
+ 	memory run --memory-total-size=150G --memory-block-size=1K --memory-oper=read --memory-access-mode=rnd &>/dev/null &
 	local PID=$!
 	echo -n -e "* Sysbench RAM read:\t\t\t"
 	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .5; done
@@ -152,64 +148,90 @@ exitproc() {
 }
 
 export LANG=C
+CURRDIR=`pwd`
 WORKDIR="$1"
 VER="v1.0"
 CDATE=`date +%F-%H%M`
-RAMSIZE=$(( `awk '/MemTotal/{print $2}' /proc/meminfo` / 1000000 ))
+RAMSIZE=`awk '/MemTotal/{print int($2 / 1000000)}' /proc/meminfo`
 CPUCORES=`nproc`
-#if [[ $CPUCORES -eq 1 ]] ; then
-#	CPUCORES=2
-#fi
-CPUMHZ=$(lscpu -e=maxmhz | tail -n1)
-CPUGHZ=$(echo "scale=1; ${CPUMHZ%%,*} / 1000" | bc)
-COEFF=$(echo "scale=2; l(${CPUCORES} / 2 + ${CPUGHZ})" | bc -l)
+CPUGOV=`cat /sys/devices/system/cpu/cpufreq/policy0/scaling_governor`
+CPUFREQ=`awk '{print $1 / 1000000}' /sys/devices/system/cpu/cpufreq/policy0/cpuinfo_max_freq`
+COEFF=$(echo "scale=2; l(${CPUCORES} / 2 + ${CPUFREQ})" | bc -l)
 NRTESTS=10
 SYSINFO=$(inxi -c0 -v | sed "s/Up:.*//;s/inxi:.*//;s/Storage:.*//")
 
-if [[ -z $1 ]] ; then
-	echo "Please specify the full path for the temporary directory! Aborting."
-	exit 1
-fi
+# I leave this for reference
+#CPUFREQ=$(cpupower frequency-info -l | grep -v "analyzing" | awk '{print $2 / 1000000}')
+#CPUGOV=$(cpupower frequency-info -o | grep -m1 "^CPU" | awk -F' -  ' '{ print $3 }')
+#CPUMHZ=$(lscpu -e=maxmhz | tail -n1)
+#CPUGHZ=$(echo "scale=1; ${CPUMHZ%%,*} / 1000" | bc)
+
+[[ $RAMSIZE -lt 4 ]] && echo "Your computer must have at least 4 GB of RAM! Aborting." && exit 2
+
+[[ -z $1 ]] && echo "Please specify the full path for the temporary directory! Aborting." && exit 4
 
 [[ "${WORKDIR:0:1}" != "/" ]] && WORKDIR="$PWD/$WORKDIR"
 if [[ ! -d "$WORKDIR" ]] ; then
 	read -p "The specified directory $WORKDIR does not exist. Create it (y/N)? " DCHOICE
-	if [[ $DCHOICE = "y" || $DCHOICE = "Y" ]] ; then
-		mkdir -p $WORKDIR
-	else
-		exit 1
-	fi
+	[[ $DCHOICE = "y" || $DCHOICE = "Y" ]] && mkdir -p $WORKDIR || exit 4
 fi
 
 LOGFILE="$WORKDIR/benchie_${CDATE}.log"
 LOCKFILE=`mktemp $WORKDIR/benchie.XXXX`
 
-read -p "It is recommended to drop the caches before starting, do you want \
-to do that now? Root priviledges needed! (y/N)" DCHOICE
-if [[ $DCHOICE = "y" || $DCHOICE = "Y" ]]; then
-	su -c "echo 3 > /proc/sys/vm/drop_caches"
-	sync ; sleep 2
+read -p "Do you want to drop page cache now? Root priviledges needed! (y/N)" DCHOICE
+[[ $DCHOICE = "y" || $DCHOICE = "Y" ]] && su -c "echo 3 > /proc/sys/vm/drop_caches"
+
+if [[ $CPUGOV != "performance" ]] ; then
+	read -p "You should use the 'performance' cpufreq governor, enable now? (y/N)" DCHOICE
+	[[ $DCHOICE = "y" || $DCHOICE = "Y" ]] && su -c "cpupower frequency-set -g performance"
 fi
 
-echo -e "* Checking and downloading missing test files ...\n"
-if [[ ! -f $WORKDIR/kernel44.tar.gz ]]; then
-	wget --show-progress -qO $WORKDIR/kernel44.tar.gz https://cdn.kernel.org/pub/linux/kernel/v4.x/linux-4.4.tar.gz
-fi
+echo -e "\nChecking, downloading and preparing test files...\n"
+
 if [[ ! -f $WORKDIR/bench.srw && ! -f $WORKDIR/bench.srw.xmp ]]; then
  	wget --show-progress -qO $WORKDIR/bench.srw http://www.mirada.ch/bench.SRW
  	wget --show-progress -qO $WORKDIR/bench.srw.xmp http://www.mirada.ch/bench.SRW.xmp
 fi
+
+if [[ ! -f $WORKDIR/kernel44.tar.gz ]]; then
+	wget --show-progress -qO $WORKDIR/kernel44.tar.gz https://cdn.kernel.org/pub/linux/kernel/v4.x/linux-4.4.tar.gz
+fi
+echo "Unzipping kernel tarball..."
+gunzip -k -f -q $WORKDIR/kernel44.tar.gz
+
 if [[ ! -f $WORKDIR/ffmpeg.tar.gz ]]; then
 	wget --show-progress -qO $WORKDIR/ffmpeg.tar.gz https://git.ffmpeg.org/gitweb/ffmpeg.git/snapshot/1529dfb73a5157dcb8762051ec4c8d8341762478.tar.gz
 fi
+echo "Preparing ffmpeg..."
+cd $WORKDIR
+tar xf ffmpeg.tar.gz
+cd ffmpeg-1529dfb
+./configure --prefix=/tmp --disable-debug --enable-shared --enable-stripping \
+  --disable-ladspa --disable-programs --disable-ffplay --disable-ffprobe \
+  --disable-doc --disable-network --disable-protocols --disable-lzma \
+  --disable-amf --disable-cuda-llvm --disable-cuvid --disable-d3d11va --disable-dxva2 \
+  --disable-nvdec --disable-nvenc --disable-vaapi --disable-vdpau --disable-sdl2 \
+  --disable-schannel --disable-securetransport --enable-libfontconfig \
+  --enable-libfreetype --enable-libspeex --enable-libvpx --enable-libopus --enable-libvorbis \
+  --enable-libx264 --enable-libx265 --enable-opengl --enable-libdrm --enable-gpl \
+  --enable-gmp --enable-gnutls --disable-avx512 --disable-fma4 --disable-autodetect \
+  --enable-version3 &>/dev/null
+cd $CURRDIR
+
 if [[ ! -f $WORKDIR/blender.zip ]]; then
 	wget --show-progress -qO $WORKDIR/blender.zip https://download.blender.org/demo/test/Demo_274.zip
 fi
+echo "Unzipping Blender demo files..."
+unzip -qqj $WORKDIR/blender.zip -d $WORKDIR/blender
+
 if [[ ! -f $WORKDIR/pi.c ]]; then
 	wget --show-progress -qO $WORKDIR/pi.c https://gmplib.org/download/misc/gmp-chudnovsky.c
 fi
+echo "Compiling pi source file..."
+gcc -O3 -march=native $WORKDIR/pi.c -o $WORKDIR/pi -lm -lgmp
 
-echo -e "Starting ...\n"
+echo -e "Starting...\n" ; sync ; sleep 1
 echo "=====__==__ ========================== _____======"
 echo "====|  \/  |==== MINI BENCHMARKER ====| ___ ))===="
 echo "====| |\/| |======= by torvic9 =======| ___ \====="
@@ -220,16 +242,16 @@ echo "=================================================="
 trap killproc INT
 trap exitproc EXIT
 
-runperf ; sleep 2
-runpi ; sleep 2
-runargon ; sleep 2
-runsysb1 ; sleep 2
-runsysb2 ; sleep 2
-runsysb3 ; sleep 2
-runffm ; sync ; sleep 2
-rundarkt ; sync ; sleep 2
-runxz ; sync ; sleep 2
-runblend ; sync ; sleep 2
+runperf1 ; sleep 3
+runperf2 ; sleep 3
+runpi ; sleep 3
+runargon ; sleep 3
+runsysb1 ; sleep 3
+runsysb2 ; sleep 3
+runffm ; sync ; sleep 3
+rundarkt ; sync ; sleep 3
+runxz ; sync ; sleep 3
+runblend ; sync ; sleep 3
 
 unset arrayz; unset ARRAY
 arrayz=(`awk -F': ' '{print $2}' $LOGFILE`)
@@ -240,10 +262,10 @@ arrayz=(`awk -F': ' '{print $2}' $LOGFILE`)
 # watch!
 
 for ((i=0 ; i<$(( $NRTESTS - 4)) ; i++)) ; do
-	ARRAY[$i]="$(echo "scale=10; (${arrayz[$i]} * 0.1) * sqrt(${arrayz[$i]})" | bc -l)"
+	ARRAY[$i]="$(echo "scale=10; ${arrayz[$i]} * sqrt(${arrayz[$i]} * 0.3)" | bc -l)"
 done
 for ((i=$(( $NRTESTS - 4 )) ; i<$NRTESTS ; i++)) ; do
-	ARRAY[$i]="$(echo "scale=10; (${arrayz[$i]} * 0.2) * sqrt(${arrayz[$i]})" | bc -l)"
+	ARRAY[$i]="$(echo "scale=10; ${arrayz[$i]} * sqrt(${arrayz[$i]} * 0.4)" | bc -l)"
 done
 
 #TTIME="$(echo "${arrayz[@]}" | sed 's/ /+/g' | bc)"
@@ -255,9 +277,11 @@ echo "Total time in seconds:"
 echo "--------------------------------------------------"
 echo $TTIME ; echo "Total time (s): $TTIME" >> $LOGFILE
 echo "--------------------------------------------------"
-echo "Total score (lower is better):"
+#echo "Total score (lower is better):"
+echo -n "Total score (lower is better)" ; echo " [multi = $COEFF]:"
 echo "--------------------------------------------------"
 echo $SCORE ; echo "Total score: $SCORE" >> $LOGFILE
 echo $SYSINFO >> $LOGFILE
 echo "=================================================="
 exit 0
+
