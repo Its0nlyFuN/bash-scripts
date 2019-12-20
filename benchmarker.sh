@@ -18,7 +18,7 @@ runffm() {
 
 runxz() {
 	local RESFILE="$WORKDIR/runxz"
- 	/usr/bin/time -f %e -o $RESFILE xz -z -T${CPUCORES} --lzma2=preset=7e,pb=0 -Qqq -f $WORKDIR/kernel44.tar &
+ 	/usr/bin/time -f %e -o $RESFILE xz -z -T${CPUCORES} --lzma2=preset=6e,pb=0 -Qqq -f $WORKDIR/kernel49.tar &
 	local PID=$!
 	echo -n -e "* XZ compression:\t\t\t"
 	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .5; done
@@ -194,11 +194,11 @@ if [[ ! -f $WORKDIR/bench.srw && ! -f $WORKDIR/bench.srw.xmp ]]; then
  	wget --show-progress -qO $WORKDIR/bench.srw.xmp http://www.mirada.ch/bench.SRW.xmp
 fi
 
-if [[ ! -f $WORKDIR/kernel44.tar.gz ]]; then
-	wget --show-progress -qO $WORKDIR/kernel44.tar.gz https://cdn.kernel.org/pub/linux/kernel/v4.x/linux-4.4.tar.gz
+if [[ ! -f $WORKDIR/kernel49.tar.xz ]]; then
+	wget --show-progress -qO $WORKDIR/kernel49.tar.xz https://cdn.kernel.org/pub/linux/kernel/v4.x/linux-4.9.tar.xz
 fi
 echo "Unzipping kernel tarball..."
-gunzip -k -f -q $WORKDIR/kernel44.tar.gz
+xz -d -k -q $WORKDIR/kernel49.tar.xz
 
 if [[ ! -f $WORKDIR/ffmpeg.tar.gz ]]; then
 	wget --show-progress -qO $WORKDIR/ffmpeg.tar.gz https://git.ffmpeg.org/gitweb/ffmpeg.git/snapshot/1529dfb73a5157dcb8762051ec4c8d8341762478.tar.gz
@@ -262,10 +262,10 @@ arrayz=(`awk -F': ' '{print $2}' $LOGFILE`)
 # watch!
 
 for ((i=0 ; i<$(( $NRTESTS - 4)) ; i++)) ; do
-	ARRAY[$i]="$(echo "scale=10; ${arrayz[$i]} * sqrt(${arrayz[$i]} * 0.3)" | bc -l)"
+	ARRAY[$i]="$(echo "scale=10; ${arrayz[$i]} * sqrt(${arrayz[$i]} * 1.0)" | bc -l)"
 done
 for ((i=$(( $NRTESTS - 4 )) ; i<$NRTESTS ; i++)) ; do
-	ARRAY[$i]="$(echo "scale=10; ${arrayz[$i]} * sqrt(${arrayz[$i]} * 0.4)" | bc -l)"
+	ARRAY[$i]="$(echo "scale=10; ${arrayz[$i]} * sqrt(${arrayz[$i]} * 1.2)" | bc -l)"
 done
 
 #TTIME="$(echo "${arrayz[@]}" | sed 's/ /+/g' | bc)"
