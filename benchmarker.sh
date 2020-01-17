@@ -177,7 +177,7 @@ if [[ ! -d $WORKDIR/stress-ng ]]; then
 	tar xf stress-ng.tar.xz
 	cd stress-ng-0.10.15
 	sed -i 's/\-O2/\-O2\ \-march\=native/' Makefile
-	make -s -j${CPUCORES} && make -s DESTDIR=$WORKDIR/stress-ng install
+	make -s -j${CPUCORES} &>/dev/null && make -s DESTDIR=$WORKDIR/stress-ng install &>/dev/null
 	cd .. && rm -rf stress-ng-0.10.15
 fi
 
