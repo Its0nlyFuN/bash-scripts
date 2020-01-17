@@ -16,7 +16,7 @@ runstress1() {
 
 runstress2() {
 	local RESFILE="$WORKDIR/runstress2"
-	/usr/bin/time -f %e -o $RESFILE $STRESS -q --vm $CPUCORES --vm-method rowhammer --vm-populate --vm-bytes 1G --vm-ops 20000 &>/dev/null &
+	/usr/bin/time -f %e -o $RESFILE $STRESS -q --vm $CPUCORES --vm-method rowhammer --vm-populate --vm-bytes 1G --vm-ops 50000 &>/dev/null &
 	local PID=$!
 	echo -n -e "* stress-ng rowhammer:\t\t\t"
 	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep 1; done
@@ -27,7 +27,7 @@ runstress2() {
 
 runstress3() {
 	local RESFILE="$WORKDIR/runstress3"
-	/usr/bin/time -f %e -o $RESFILE $STRESS -q --mmap $CPUCORES --mmap-bytes 128M --mmap-ops 10 --mmap-file &>/dev/null &
+	/usr/bin/time -f %e -o $RESFILE $STRESS -q --mmap $CPUCORES --mmap-bytes 256M --mmap-ops 10 --mmap-file &>/dev/null &
 	local PID=$!
 	echo -n -e "* stress-ng mmap:\t\t\t"
 	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep 1; done
@@ -166,6 +166,10 @@ if [[ ! -f $WORKDIR/kernel49.tar ]]; then
 	xz -d -q $WORKDIR/kernel49.tar.xz
 fi
 
+if [[ ! -f $WORKDIR/pi.c ]] ; then
+	wget --show-progress -qO $WORKDIR/pi.c https://gmplib.org/download/misc/gmp-chudnovsky.c
+fi
+
 if [[ ! -d $WORKDIR/stress-ng ]]; then
 	wget --show-progress -qO $WORKDIR/stress-ng.tar.xz https://kernel.ubuntu.com/~cking/tarballs/stress-ng/stress-ng-0.10.15.tar.xz
 	echo "Preparing stress-ng..."
@@ -228,7 +232,7 @@ arrayz=(`awk -F': ' '{print $2}' $LOGFILE`)
 # watch!
 
 for ((i=0 ; i<${NRTESTS} ; i++)) ; do
-	ARRAY[$i]="$(echo "scale=10; ${arrayz[$i]} * sqrt(${arrayz[$i]})" | bc -l)"
+	ARRAY[$i]="$(echo "scale=10; ${arrayz[$i]} * $COEFF" | bc -l)"
 done
 
 #TTIME="$(echo "${arrayz[@]}" | sed 's/ /+/g' | bc)"
