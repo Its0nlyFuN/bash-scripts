@@ -3,14 +3,46 @@
 # Contributors and testers:
 # Richard Gladman, William Pursell, SGS, mbb, mbod, Manjaro Forum, StackOverflow
 
+runstress1() {
+	local RESFILE="$WORKDIR/runstress1"
+	/usr/bin/time -f %e -o $RESFILE $STRESS -q --matrix-3d $CPUCORES --matrix-3d-method trans --matrix-3d-size 128 --matrix-3d-ops 5000 &>/dev/null &
+	local PID=$!
+	echo -n -e "* stress-ng matrix3d:\t\t\t"
+	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep 1; done
+	printf "\b " ; cat $RESFILE
+	echo "stress-ng matrix3d: $(cat $RESFILE)" >> $LOGFILE
+	return 0
+}
+
+runstress2() {
+	local RESFILE="$WORKDIR/runstress2"
+	/usr/bin/time -f %e -o $RESFILE $STRESS -q --vm $CPUCORES --vm-method rowhammer --vm-populate --vm-bytes 1G --vm-ops 20000 &>/dev/null &
+	local PID=$!
+	echo -n -e "* stress-ng rowhammer:\t\t\t"
+	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep 1; done
+	printf "\b " ; cat $RESFILE
+	echo "stress-ng rowhammer: $(cat $RESFILE)" >> $LOGFILE
+	return 0
+}
+
+runstress3() {
+	local RESFILE="$WORKDIR/runstress3"
+	/usr/bin/time -f %e -o $RESFILE $STRESS -q --mmap $CPUCORES --mmap-bytes 128M --mmap-ops 10 --mmap-file &>/dev/null &
+	local PID=$!
+	echo -n -e "* stress-ng mmap:\t\t\t"
+	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep 1; done
+	printf "\b " ; cat $RESFILE
+	echo "stress-ng mmap: $(cat $RESFILE)" >> $LOGFILE
+	return 0
+}
+
 runffm() {
-	cd $WORKDIR
-	cd ffmpeg-1529dfb
+	cd $WORKDIR/ffmpeg-1529dfb
 	local RESFILE="$WORKDIR/runffm"
 	/usr/bin/time -f %e -o $RESFILE make -s -j${CPUCORES} &>/dev/null &
 	local PID=$!
-	echo -n -e "\n* ffmpeg compilation:\t\t\t"
-	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .5; done
+	echo -n -e "* ffmpeg compilation:\t\t\t"
+	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep 1; done
 	printf "\b " ; cat $RESFILE
 	echo "ffmpeg compilation: $(cat $RESFILE)" >> $LOGFILE
 	return 0
@@ -18,25 +50,12 @@ runffm() {
 
 runxz() {
 	local RESFILE="$WORKDIR/runxz"
- 	/usr/bin/time -f %e -o $RESFILE xz -z -T${CPUCORES} --lzma2=preset=6e,pb=0 -Qqq -f $WORKDIR/kernel49.tar &
+ 	/usr/bin/time -f %e -o $RESFILE xz -z -k -T${CPUCORES} --lzma2=preset=7e,pb=0 -Qqq -f $WORKDIR/kernel49.tar &
 	local PID=$!
-	echo -n -e "* XZ compression:\t\t\t"
-	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .5; done
+	echo -n -e "* xz compression:\t\t\t"
+	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep 1; done
 	printf "\b " ; cat $RESFILE
-	echo "XZ compression: $(cat $RESFILE)" >> $LOGFILE
-	return 0
-}
-
-runblend() {
-	local RESFILE="$WORKDIR/runblend"
-	local TMP="$WORKDIR"
-	local BLENDER_USER_CONFIG="$WORKDIR"
-	/usr/bin/time -f %e -o $RESFILE blender -b $WORKDIR/blender/scene-Helicopter-27.blend -o $WORKDIR/blenderheli.png -f 1 --verbose 0 &>/dev/null &
-	local PID=$!
-	echo -n -e "* Blender render:\t\t\t"
-	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .5; done
-	printf "\b " ; cat $RESFILE
-	echo "Blender render: $(cat $RESFILE)" >> $LOGFILE
+	echo "xz compression: $(cat $RESFILE)" >> $LOGFILE
 	return 0
 }
 
@@ -44,10 +63,10 @@ runargon() {
 	local RESFILE="$WORKDIR/runargon"
 	/usr/bin/time -f %e -o $RESFILE argon2 BenchieSalt -i -t 60 -m 20 -p $CPUCORES &>/dev/null <<< $(dd if=/dev/urandom bs=1 count=64 status=none) &
 	local PID=$!
-	echo -n -e "* Argon2 hashing:\t\t\t"
-	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .5; done
+	echo -n -e "* argon2 hashing:\t\t\t"
+	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep 1; done
 	printf "\b " ; cat $RESFILE
-	echo "Argon2 hashing: $(cat $RESFILE)" >> $LOGFILE
+	echo "argon2 hashing: $(cat $RESFILE)" >> $LOGFILE
 	return 0
 }
 
@@ -55,81 +74,32 @@ runperf1() {
 	local RESFILE="$WORKDIR/runperf"
 	perf bench -f simple sched messaging -p -t -g 25 -l 10000 1> $RESFILE &
 	local PID=$!
-	echo -n -e "* Perf sched:\t\t\t\t"
+	echo -n -e "* perf sched:\t\t\t\t"
 	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep 1; done
 	printf "\b " ; cat $RESFILE
-	echo "Perf sched: $(cat $RESFILE)" >> $LOGFILE
+	echo "perf sched: $(cat $RESFILE)" >> $LOGFILE
 	return 0
 }
 
 runperf2() {
 	local RESFILE="$WORKDIR/runperf"
-	/usr/bin/time -f %e -o $RESFILE perf bench -f simple mem memset --nr_loops 100 --size 1GB -f default &>/dev/null &
+	/usr/bin/time -f %e -o $RESFILE perf bench -f simple mem memcpy --nr_loops 50 --size 2GB -f x86-64-movsb &>/dev/null &
 	local PID=$!
-	echo -n -e "* Perf memset:\t\t\t\t"
+	echo -n -e "* perf memcpy:\t\t\t\t"
 	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep 1; done
 	printf "\b " ; cat $RESFILE
-	echo "Perf sched: $(cat $RESFILE)" >> $LOGFILE
+	echo "perf memcpy: $(cat $RESFILE)" >> $LOGFILE
 	return 0
 }
 
 runpi() {
 	local RESFILE="$WORKDIR/runpi"
-	/usr/bin/time -f%e -o $RESFILE $WORKDIR/pi 60000000 1>/dev/null &
+	/usr/bin/time -f%e -o $RESFILE $WORKDIR/pi 66000000 1>/dev/null &
 	local PID=$!
-	echo -n -e "* Calculating 60m digits of pi:\t\t"
-	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .5; done
+	echo -n -e "* calculating 66m digits of pi:\t\t"
+	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep 1; done
 	printf "\b " ; cat $RESFILE
-	echo "Calculating 66m digits of pi: $(cat $RESFILE)" >> $LOGFILE
-	return 0
-}
-
-rundarkt() {
-	local RESFILE="$WORKDIR/rundarkt"
-	darktable-cli $WORKDIR/bench.srw $WORKDIR/benchie_$CDATE.jpg --core --tmpdir $WORKDIR \
-	--configdir $WORKDIR --disable-opencl -d perf 2>/dev/null | awk '/dev_process_export/{print $1}' > $RESFILE &
-	local PID=$!
-	echo -n -e "* Darktable RAW conversion:\t\t"
-	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .5; done
-	sed -i 's/.\{3\}$//;s/,/./' $RESFILE
-	printf "\b " ; cat $RESFILE
-	echo "Darktable RAW conversion: $(cat $RESFILE)" >> $LOGFILE
-	return 0
-}
-
-runsysb1() {
-	local RESFILE="$WORKDIR/runsysb1"
- 	/usr/bin/time -f %e -o $RESFILE sysbench --threads=$CPUCORES --verbosity=0 --events=10000 \
- 	--time=0 cpu run --cpu-max-prime=80000 &
-	local PID=$!
-	echo -n -e "* Sysbench CPU:\t\t\t\t"
-	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .5; done
-	printf "\b " ; cat $RESFILE
-	echo "Sysbench CPU: $(cat $RESFILE)" >> $LOGFILE
-	return 0
-}
-
-#runsysb2() {
-#	local RESFILE="$WORKDIR/runsysb2"
-# 	/usr/bin/time -f %e -o $RESFILE sysbench --threads=$CPUCORES --verbosity=0 --time=0 \
-# 	memory run --memory-total-size=128G --memory-block-size=4K --memory-oper=write --memory-access-mode=seq &>/dev/null &
-#	local PID=$!
-#	echo -n -e "* Sysbench RAM write:\t\t\t"
-#	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .5; done
-#	printf "\b " ; cat $RESFILE
-#	echo "Sysbench RAM write: $(cat $RESFILE)" >> $LOGFILE
-#	return 0
-#}
-
-runsysb2() {
-	local RESFILE="$WORKDIR/runsysb2"
- 	/usr/bin/time -f %e -o $RESFILE sysbench --threads=$CPUCORES --verbosity=0 --time=0 \
- 	memory run --memory-total-size=150G --memory-block-size=1K --memory-oper=read --memory-access-mode=rnd &>/dev/null &
-	local PID=$!
-	echo -n -e "* Sysbench RAM read:\t\t\t"
-	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .5; done
-	printf "\b " ; cat $RESFILE
-	echo "Sysbench RAM read: $(cat $RESFILE)" >> $LOGFILE
+	echo "calculating 66m digits of pi: $(cat $RESFILE)" >> $LOGFILE
 	return 0
 }
 
@@ -140,9 +110,9 @@ killproc() {
 
 exitproc() {
 	echo -e "Removing temporary files...\n"
-	for i in $WORKDIR/{run*,benchie_*.jpg,kernel44.tar.xz,ffmpeg-1529dfb,blender*.png,darktablerc,data.db*,blender,pi} ; do
-		if [ -f $i ] ; then rm $i ; fi
-		if [ -d $i ] ; then rm -r $i ; fi
+	for i in $WORKDIR/{run*,ffmpeg-1529dfb,pi} ; do
+		[[ -f $i ]] && rm $i
+		[[ -d $i ]] && rm -r $i
 	done
 	rm $(echo $LOCKFILE)
 }
@@ -152,13 +122,14 @@ CURRDIR=`pwd`
 WORKDIR="$1"
 VER="v1.0"
 CDATE=`date +%F-%H%M`
-RAMSIZE=`awk '/MemTotal/{print int($2 / 1000000)}' /proc/meminfo`
+RAMSIZE=`awk '/MemTotal/{print int($2 / 1000)}' /proc/meminfo`
 CPUCORES=`nproc`
 CPUGOV=`cat /sys/devices/system/cpu/cpufreq/policy0/scaling_governor`
 CPUFREQ=`awk '{print $1 / 1000000}' /sys/devices/system/cpu/cpufreq/policy0/cpuinfo_max_freq`
 COEFF=$(echo "scale=2; l(${CPUCORES} / 2 + ${CPUFREQ})" | bc -l)
-NRTESTS=10
+NRTESTS=9
 SYSINFO=$(inxi -c0 -v | sed "s/Up:.*//;s/inxi:.*//;s/Storage:.*//")
+STRESS=${WORKDIR}/stress-ng/usr/bin/stress-ng
 
 # I leave this for reference
 #CPUFREQ=$(cpupower frequency-info -l | grep -v "analyzing" | awk '{print $2 / 1000000}')
@@ -166,7 +137,7 @@ SYSINFO=$(inxi -c0 -v | sed "s/Up:.*//;s/inxi:.*//;s/Storage:.*//")
 #CPUMHZ=$(lscpu -e=maxmhz | tail -n1)
 #CPUGHZ=$(echo "scale=1; ${CPUMHZ%%,*} / 1000" | bc)
 
-[[ $RAMSIZE -lt 4 ]] && echo "Your computer must have at least 4 GB of RAM! Aborting." && exit 2
+[[ $RAMSIZE -lt 3500 ]] && echo "Your computer must have at least 4 GB of RAM! Aborting." && exit 2
 
 [[ -z $1 ]] && echo "Please specify the full path for the temporary directory! Aborting." && exit 4
 
@@ -189,16 +160,22 @@ fi
 
 echo -e "\nChecking, downloading and preparing test files...\n"
 
-if [[ ! -f $WORKDIR/bench.srw && ! -f $WORKDIR/bench.srw.xmp ]]; then
- 	wget --show-progress -qO $WORKDIR/bench.srw http://www.mirada.ch/bench.SRW
- 	wget --show-progress -qO $WORKDIR/bench.srw.xmp http://www.mirada.ch/bench.SRW.xmp
+if [[ ! -f $WORKDIR/kernel49.tar ]]; then
+	wget --show-progress -qO $WORKDIR/kernel49.tar.xz https://cdn.kernel.org/pub/linux/kernel/v4.x/linux-4.9.tar.xz
+	echo "Unzipping kernel tarball..."
+	xz -d -q $WORKDIR/kernel49.tar.xz
 fi
 
-if [[ ! -f $WORKDIR/kernel49.tar.xz ]]; then
-	wget --show-progress -qO $WORKDIR/kernel49.tar.xz https://cdn.kernel.org/pub/linux/kernel/v4.x/linux-4.9.tar.xz
+if [[ ! -d $WORKDIR/stress-ng ]]; then
+	wget --show-progress -qO $WORKDIR/stress-ng.tar.xz https://kernel.ubuntu.com/~cking/tarballs/stress-ng/stress-ng-0.10.15.tar.xz
+	echo "Preparing stress-ng..."
+	cd $WORKDIR
+	tar xf stress-ng.tar.xz
+	cd stress-ng-0.10.15
+	sed -i 's/\-O2/\-O2\ \-march\=native/' Makefile
+	make -s -j${CPUCORES} && make -s DESTDIR=$WORKDIR/stress-ng install
+	cd .. && rm -rf stress-ng-0.10.15
 fi
-echo "Unzipping kernel tarball..."
-xz -d -k -q $WORKDIR/kernel49.tar.xz
 
 if [[ ! -f $WORKDIR/ffmpeg.tar.gz ]]; then
 	wget --show-progress -qO $WORKDIR/ffmpeg.tar.gz https://git.ffmpeg.org/gitweb/ffmpeg.git/snapshot/1529dfb73a5157dcb8762051ec4c8d8341762478.tar.gz
@@ -207,7 +184,7 @@ echo "Preparing ffmpeg..."
 cd $WORKDIR
 tar xf ffmpeg.tar.gz
 cd ffmpeg-1529dfb
-./configure --prefix=/tmp --disable-debug --enable-shared --enable-stripping \
+./configure --prefix=/tmp --disable-debug --enable-static --enable-stripping \
   --disable-ladspa --disable-programs --disable-ffplay --disable-ffprobe \
   --disable-doc --disable-network --disable-protocols --disable-lzma \
   --disable-amf --disable-cuda-llvm --disable-cuvid --disable-d3d11va --disable-dxva2 \
@@ -219,15 +196,6 @@ cd ffmpeg-1529dfb
   --enable-version3 &>/dev/null
 cd $CURRDIR
 
-if [[ ! -f $WORKDIR/blender.zip ]]; then
-	wget --show-progress -qO $WORKDIR/blender.zip https://download.blender.org/demo/test/Demo_274.zip
-fi
-echo "Unzipping Blender demo files..."
-unzip -qqj $WORKDIR/blender.zip -d $WORKDIR/blender
-
-if [[ ! -f $WORKDIR/pi.c ]]; then
-	wget --show-progress -qO $WORKDIR/pi.c https://gmplib.org/download/misc/gmp-chudnovsky.c
-fi
 echo "Compiling pi source file..."
 gcc -O3 -march=native $WORKDIR/pi.c -o $WORKDIR/pi -lm -lgmp
 
@@ -241,17 +209,15 @@ echo "=================================================="
 # start
 trap killproc INT
 trap exitproc EXIT
-
+runstress1; sleep 3
+runstress2; sleep 3
+runstress3; sleep 3
 runperf1 ; sleep 3
 runperf2 ; sleep 3
 runpi ; sleep 3
 runargon ; sleep 3
-runsysb1 ; sleep 3
-runsysb2 ; sleep 3
 runffm ; sync ; sleep 3
-rundarkt ; sync ; sleep 3
 runxz ; sync ; sleep 3
-runblend ; sync ; sleep 3
 
 unset arrayz; unset ARRAY
 arrayz=(`awk -F': ' '{print $2}' $LOGFILE`)
@@ -261,17 +227,14 @@ arrayz=(`awk -F': ' '{print $2}' $LOGFILE`)
 #set -x
 # watch!
 
-for ((i=0 ; i<$(( $NRTESTS - 4)) ; i++)) ; do
-	ARRAY[$i]="$(echo "scale=10; ${arrayz[$i]} * sqrt(${arrayz[$i]} * 1.0)" | bc -l)"
-done
-for ((i=$(( $NRTESTS - 4 )) ; i<$NRTESTS ; i++)) ; do
-	ARRAY[$i]="$(echo "scale=10; ${arrayz[$i]} * sqrt(${arrayz[$i]} * 1.2)" | bc -l)"
+for ((i=0 ; i<${NRTESTS} ; i++)) ; do
+	ARRAY[$i]="$(echo "scale=10; ${arrayz[$i]} * sqrt(${arrayz[$i]})" | bc -l)"
 done
 
 #TTIME="$(echo "${arrayz[@]}" | sed 's/ /+/g' | bc)"
 TTIME="$(IFS="+" ; bc <<< "scale=2; ${arrayz[*]}")"
 INTSCORE="$(IFS="+" ; bc -l <<< "scale=2; ${ARRAY[*]}")"
-SCORE="$(bc -l <<< "scale=2; $INTSCORE * $COEFF / $NRTESTS")"
+SCORE="$(bc -l <<< "scale=0; $INTSCORE * $COEFF / $NRTESTS")"
 echo "--------------------------------------------------"
 echo "Total time in seconds:"
 echo "--------------------------------------------------"
