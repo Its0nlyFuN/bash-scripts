@@ -16,7 +16,7 @@ runstress1() {
 
 runstress2() {
 	local RESFILE="$WORKDIR/runstress2"
-	/usr/bin/time -f %e -o $RESFILE $STRESS -q --vm $CPUCORES --vm-method rowhammer --vm-populate --vm-bytes 1G --vm-ops 50000 &>/dev/null &
+	/usr/bin/time -f %e -o $RESFILE $STRESS -q --vm $CPUCORES --vm-method read64 --vm-populate --vm-bytes 1G --vm-ops 50000 &>/dev/null &
 	local PID=$!
 	echo -n -e "* stress-ng rowhammer:\t\t\t"
 	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep 1; done
@@ -27,7 +27,7 @@ runstress2() {
 
 runstress3() {
 	local RESFILE="$WORKDIR/runstress3"
-	/usr/bin/time -f %e -o $RESFILE $STRESS -q --mmap $CPUCORES --mmap-bytes 256M --mmap-ops 10 --mmap-file &>/dev/null &
+	/usr/bin/time -f %e -o $RESFILE $STRESS -q --mmap $CPUCORES --mmap-bytes 1G --mmap-ops 1000 &>/dev/null &
 	local PID=$!
 	echo -n -e "* stress-ng mmap:\t\t\t"
 	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep 1; done
@@ -51,6 +51,7 @@ runffm() {
 runxz() {
 	local RESFILE="$WORKDIR/runxz"
  	/usr/bin/time -f %e -o $RESFILE xz -z -k -T${CPUCORES} --lzma2=preset=7e,pb=0 -Qqq -f $WORKDIR/kernel49.tar &
+#	/usr/bin/time -f %e -o $RESFILE zstd -k -T${CPUCORES} -19 -qq -f $WORKDIR/kernel49.tar &
 	local PID=$!
 	echo -n -e "* xz compression:\t\t\t"
 	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep 1; done
@@ -126,7 +127,7 @@ RAMSIZE=`awk '/MemTotal/{print int($2 / 1000)}' /proc/meminfo`
 CPUCORES=`nproc`
 CPUGOV=`cat /sys/devices/system/cpu/cpufreq/policy0/scaling_governor`
 CPUFREQ=`awk '{print $1 / 1000000}' /sys/devices/system/cpu/cpufreq/policy0/cpuinfo_max_freq`
-COEFF=$(echo "scale=2; l(${CPUCORES} / 2 + ${CPUFREQ})" | bc -l)
+COEFF=$(echo "scale=2; sqrt(${CPUCORES}) * l(${CPUFREQ})" | bc -l)
 NRTESTS=9
 SYSINFO=$(inxi -c0 -v | sed "s/Up:.*//;s/inxi:.*//;s/Storage:.*//")
 STRESS=${WORKDIR}/stress-ng/usr/bin/stress-ng
@@ -138,6 +139,7 @@ STRESS=${WORKDIR}/stress-ng/usr/bin/stress-ng
 #CPUGHZ=$(echo "scale=1; ${CPUMHZ%%,*} / 1000" | bc)
 
 [[ $RAMSIZE -lt 3500 ]] && echo "Your computer must have at least 4 GB of RAM! Aborting." && exit 2
+[[ $CPUCORES -lt 2 ]] && echo "Your CPU must have at least two cores! Aborting." && exit 2
 
 [[ -z $1 ]] && echo "Please specify the full path for the temporary directory! Aborting." && exit 4
 
@@ -232,7 +234,7 @@ arrayz=(`awk -F': ' '{print $2}' $LOGFILE`)
 # watch!
 
 for ((i=0 ; i<${NRTESTS} ; i++)) ; do
-	ARRAY[$i]="$(echo "scale=10; ${arrayz[$i]} * $COEFF" | bc -l)"
+	ARRAY[$i]="$(echo "scale=10; sqrt(${arrayz[$i]} * 100)" | bc -l)"
 done
 
 #TTIME="$(echo "${arrayz[@]}" | sed 's/ /+/g' | bc)"
