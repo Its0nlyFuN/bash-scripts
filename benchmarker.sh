@@ -5,40 +5,30 @@
 
 runstress1() {
 	local RESFILE="$WORKDIR/runstress1"
-	/usr/bin/time -f %e -o $RESFILE $STRESS -q --matrix-3d $CPUCORES --matrix-3d-method trans --matrix-3d-size 128 --matrix-3d-ops 5000 &>/dev/null &
+	/usr/bin/time -f %e -o $RESFILE $STRESS -q $WORKDIR/stressC &>/dev/null &
 	local PID=$!
-	echo -n -e "* stress-ng matrix3d:\t\t\t"
+	echo -n -e "* stress-ng cpu:\t\t\t"
 	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep 1; done
 	printf "\b " ; cat $RESFILE
-	echo "stress-ng matrix3d: $(cat $RESFILE)" >> $LOGFILE
+	echo "stress-ng cpu: $(cat $RESFILE)" >> $LOGFILE
 	return 0
 }
 
 runstress2() {
 	local RESFILE="$WORKDIR/runstress2"
-	/usr/bin/time -f %e -o $RESFILE $STRESS -q --vm $CPUCORES --vm-method read64 --vm-populate --vm-bytes 1G --vm-ops 50000 &>/dev/null &
+	/usr/bin/time -f %e -o $RESFILE $STRESS -q $WORKDIR/stressR &>/dev/null &
 	local PID=$!
-	echo -n -e "* stress-ng rowhammer:\t\t\t"
+	echo -n -e "* stress-ng memory:\t\t\t"
 	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep 1; done
 	printf "\b " ; cat $RESFILE
-	echo "stress-ng rowhammer: $(cat $RESFILE)" >> $LOGFILE
-	return 0
-}
-
-runstress3() {
-	local RESFILE="$WORKDIR/runstress3"
-	/usr/bin/time -f %e -o $RESFILE $STRESS -q --mmap $CPUCORES --mmap-bytes 1G --mmap-ops 1000 &>/dev/null &
-	local PID=$!
-	echo -n -e "* stress-ng mmap:\t\t\t"
-	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep 1; done
-	printf "\b " ; cat $RESFILE
-	echo "stress-ng mmap: $(cat $RESFILE)" >> $LOGFILE
+	echo "stress-ng memory: $(cat $RESFILE)" >> $LOGFILE
 	return 0
 }
 
 runffm() {
 	cd $WORKDIR/ffmpeg-1529dfb
 	local RESFILE="$WORKDIR/runffm"
+	make -s clean &>/dev/null
 	/usr/bin/time -f %e -o $RESFILE make -s -j${CPUCORES} &>/dev/null &
 	local PID=$!
 	echo -n -e "* ffmpeg compilation:\t\t\t"
@@ -111,7 +101,7 @@ killproc() {
 
 exitproc() {
 	echo -e "Removing temporary files...\n"
-	for i in $WORKDIR/{run*,ffmpeg-1529dfb,pi} ; do
+	for i in $WORKDIR/{run*,pi,ffmpeg.tar.gz,stress-ng.tar.xz} ; do
 		[[ -f $i ]] && rm $i
 		[[ -d $i ]] && rm -r $i
 	done
@@ -127,10 +117,50 @@ RAMSIZE=`awk '/MemTotal/{print int($2 / 1000)}' /proc/meminfo`
 CPUCORES=`nproc`
 CPUGOV=`cat /sys/devices/system/cpu/cpufreq/policy0/scaling_governor`
 CPUFREQ=`awk '{print $1 / 1000000}' /sys/devices/system/cpu/cpufreq/policy0/cpuinfo_max_freq`
-COEFF=$(echo "scale=2; sqrt(${CPUCORES}) * l(${CPUFREQ})" | bc -l)
-NRTESTS=9
+COEFF=$(echo "scale=2; sqrt(${CPUCORES}) + l(${CPUFREQ})" | bc -l)
+NRTESTS=8
 SYSINFO=$(inxi -c0 -v | sed "s/Up:.*//;s/inxi:.*//;s/Storage:.*//")
 STRESS=${WORKDIR}/stress-ng/usr/bin/stress-ng
+
+# stress-ng jobfiles
+cat > $WORKDIR/stressC <<- EOF
+	run sequential
+	timeout 0
+	cpu CPUCORES
+	cpu-ops 1000
+	cpu-method hanoi
+	
+	bsearch CPUCORES
+	bsearch-ops 1000
+	bsearch-size 131072
+	
+	qsort CPUCORES
+	qsort-ops 500
+EOF
+cat > $WORKDIR/stressR <<- EOF
+	run sequential
+	timeout 0
+	vm CPUCORES
+	vm-method read64
+	vm-lock
+	vm-bytes 1G
+	vm-ops 5000
+	
+	vm CPUCORES
+	vm-method write64
+	vm-lock
+	vm-bytes 1G
+	vm-ops 5000
+	
+	stream CPUCORES
+	stream-ops 500
+	stream-index 1
+	stream-madvise nohugepage
+EOF
+
+sed -i "s/CPUCORES/$CPUCORES/g" $WORKDIR/stressC
+sed -i "s/CPUCORES/$CPUCORES/g" $WORKDIR/stressR
+
 
 # I leave this for reference
 #CPUFREQ=$(cpupower frequency-info -l | grep -v "analyzing" | awk '{print $2 / 1000000}')
@@ -183,24 +213,23 @@ if [[ ! -d $WORKDIR/stress-ng ]]; then
 	cd .. && rm -rf stress-ng-0.10.15
 fi
 
-if [[ ! -f $WORKDIR/ffmpeg.tar.gz ]]; then
+if [[ ! -d $WORKDIR/ffmpeg-1529dfb ]]; then
 	wget --show-progress -qO $WORKDIR/ffmpeg.tar.gz https://git.ffmpeg.org/gitweb/ffmpeg.git/snapshot/1529dfb73a5157dcb8762051ec4c8d8341762478.tar.gz
+	echo "Preparing ffmpeg..."
+	cd $WORKDIR
+	tar xf ffmpeg.tar.gz
+	cd ffmpeg-1529dfb
+	./configure --prefix=/tmp --disable-debug --enable-static --enable-stripping \
+  	  --disable-ladspa --disable-programs --disable-ffplay --disable-ffprobe \
+  	  --disable-doc --disable-network --disable-protocols --disable-lzma \
+  	  --disable-amf --disable-cuda-llvm --disable-cuvid --disable-d3d11va --disable-dxva2 \
+  	  --disable-nvdec --disable-nvenc --disable-vaapi --disable-vdpau --disable-sdl2 \
+  	  --disable-schannel --disable-securetransport --disable-libfontconfig \
+  	  --disable-libfreetype --enable-libspeex --enable-libvpx --enable-libopus --enable-libvorbis \
+  	  --enable-libx264 --enable-libx265 --enable-opengl --enable-libdrm --enable-gpl \
+  	  --enable-gmp --enable-gnutls --disable-avx512 --disable-fma4 --disable-autodetect \
+  	  --enable-version3 &>/dev/null
 fi
-echo "Preparing ffmpeg..."
-cd $WORKDIR
-tar xf ffmpeg.tar.gz
-cd ffmpeg-1529dfb
-./configure --prefix=/tmp --disable-debug --enable-static --enable-stripping \
-  --disable-ladspa --disable-programs --disable-ffplay --disable-ffprobe \
-  --disable-doc --disable-network --disable-protocols --disable-lzma \
-  --disable-amf --disable-cuda-llvm --disable-cuvid --disable-d3d11va --disable-dxva2 \
-  --disable-nvdec --disable-nvenc --disable-vaapi --disable-vdpau --disable-sdl2 \
-  --disable-schannel --disable-securetransport --enable-libfontconfig \
-  --enable-libfreetype --enable-libspeex --enable-libvpx --enable-libopus --enable-libvorbis \
-  --enable-libx264 --enable-libx265 --enable-opengl --enable-libdrm --enable-gpl \
-  --enable-gmp --enable-gnutls --disable-avx512 --disable-fma4 --disable-autodetect \
-  --enable-version3 &>/dev/null
-cd $CURRDIR
 
 echo "Compiling pi source file..."
 gcc -O3 -march=native $WORKDIR/pi.c -o $WORKDIR/pi -lm -lgmp
@@ -217,7 +246,6 @@ trap killproc INT
 trap exitproc EXIT
 runstress1; sleep 3
 runstress2; sleep 3
-runstress3; sleep 3
 runperf1 ; sleep 3
 runperf2 ; sleep 3
 runpi ; sleep 3
