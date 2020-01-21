@@ -28,7 +28,7 @@ runstress2() {
 runffm() {
 	cd $WORKDIR/ffmpeg-1529dfb
 	local RESFILE="$WORKDIR/runffm"
-	make -s clean &>/dev/null
+	make -s clean &>/dev/null && sleep 1
 	/usr/bin/time -f %e -o $RESFILE make -s -j${CPUCORES} &>/dev/null &
 	local PID=$!
 	echo -n -e "* ffmpeg compilation:\t\t\t"
@@ -40,7 +40,7 @@ runffm() {
 
 runxz() {
 	local RESFILE="$WORKDIR/runxz"
- 	/usr/bin/time -f %e -o $RESFILE xz -z -k -T${CPUCORES} --lzma2=preset=7e,pb=0 -Qqq -f $WORKDIR/kernel49.tar &
+ 	/usr/bin/time -f %e -o $RESFILE xz -z -k -T${CPUCORES} --lzma2=preset=6e,pb=0 -Qqq -f $WORKDIR/firefox68.tar &
 #	/usr/bin/time -f %e -o $RESFILE zstd -k -T${CPUCORES} -19 -qq -f $WORKDIR/kernel49.tar &
 	local PID=$!
 	echo -n -e "* xz compression:\t\t\t"
@@ -74,7 +74,7 @@ runperf1() {
 
 runperf2() {
 	local RESFILE="$WORKDIR/runperf"
-	/usr/bin/time -f %e -o $RESFILE perf bench -f simple mem memcpy --nr_loops 50 --size 2GB -f x86-64-movsb &>/dev/null &
+	/usr/bin/time -f %e -o $RESFILE perf bench -f simple mem memcpy --nr_loops 60 --size 2GB -f x86-64-unrolled &>/dev/null &
 	local PID=$!
 	echo -n -e "* perf memcpy:\t\t\t\t"
 	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep 1; done
@@ -101,7 +101,7 @@ killproc() {
 
 exitproc() {
 	echo -e "Removing temporary files...\n"
-	for i in $WORKDIR/{run*,pi,ffmpeg.tar.gz,stress-ng.tar.xz} ; do
+	for i in $WORKDIR/{run*,ffmpeg.tar.gz,stress-ng.tar.xz,firefox68.tar.xz,pi.c} ; do
 		[[ -f $i ]] && rm $i
 		[[ -d $i ]] && rm -r $i
 	done
@@ -117,46 +117,51 @@ RAMSIZE=`awk '/MemTotal/{print int($2 / 1000)}' /proc/meminfo`
 CPUCORES=`nproc`
 CPUGOV=`cat /sys/devices/system/cpu/cpufreq/policy0/scaling_governor`
 CPUFREQ=`awk '{print $1 / 1000000}' /sys/devices/system/cpu/cpufreq/policy0/cpuinfo_max_freq`
-COEFF=$(echo "scale=2; sqrt(${CPUCORES}) + l(${CPUFREQ})" | bc -l)
+COEFF=$(echo "scale=4; l(${CPUCORES} + ${CPUFREQ})" | bc -l)
 NRTESTS=8
 SYSINFO=$(inxi -c0 -v | sed "s/Up:.*//;s/inxi:.*//;s/Storage:.*//")
 STRESS=${WORKDIR}/stress-ng/usr/bin/stress-ng
 
 # stress-ng jobfiles
 cat > $WORKDIR/stressC <<- EOF
-	run sequential
-	timeout 0
-	cpu CPUCORES
-	cpu-ops 1000
-	cpu-method hanoi
-	
-	bsearch CPUCORES
-	bsearch-ops 1000
-	bsearch-size 131072
-	
-	qsort CPUCORES
-	qsort-ops 500
+run sequential
+timeout 0
+cpu CPUCORES
+cpu-method matrixprod
 EOF
+echo "cpu-ops $((12000 / ${CPUCORES}))" >> $WORKDIR/stressC
+cat >> $WORKDIR/stressC <<- EOF
+bsearch CPUCORES
+bsearch-size 131072
+EOF
+echo "bsearch-ops $((2400 / ${CPUCORES}))" >> $WORKDIR/stressC
+cat >> $WORKDIR/stressC <<- EOF
+qsort CPUCORES
+EOF
+echo "qsort-ops $((2400 / ${CPUCORES}))" >> $WORKDIR/stressC
+
 cat > $WORKDIR/stressR <<- EOF
-	run sequential
-	timeout 0
-	vm CPUCORES
-	vm-method read64
-	vm-lock
-	vm-bytes 1G
-	vm-ops 5000
-	
-	vm CPUCORES
-	vm-method write64
-	vm-lock
-	vm-bytes 1G
-	vm-ops 5000
-	
-	stream CPUCORES
-	stream-ops 500
-	stream-index 1
-	stream-madvise nohugepage
+run sequential
+timeout 0
+vm CPUCORES
+vm-method read64
+vm-lock
+vm-bytes 2G
 EOF
+echo "vm-ops $((12000 / ${CPUCORES}))" >> $WORKDIR/stressR
+cat >> $WORKDIR/stressR <<- EOF
+vm CPUCORES
+vm-method write64
+vm-lock
+vm-bytes 2G
+EOF
+echo "vm-ops $((12000 / ${CPUCORES}))" >> $WORKDIR/stressR
+cat >> $WORKDIR/stressR <<- EOF
+mmap CPUCORES
+mmap-bytes 256M
+EOF
+echo "mmap-ops $((2400 / ${CPUCORES}))" >> $WORKDIR/stressR
+
 
 sed -i "s/CPUCORES/$CPUCORES/g" $WORKDIR/stressC
 sed -i "s/CPUCORES/$CPUCORES/g" $WORKDIR/stressR
@@ -192,14 +197,23 @@ fi
 
 echo -e "\nChecking, downloading and preparing test files...\n"
 
-if [[ ! -f $WORKDIR/kernel49.tar ]]; then
-	wget --show-progress -qO $WORKDIR/kernel49.tar.xz https://cdn.kernel.org/pub/linux/kernel/v4.x/linux-4.9.tar.xz
+#if [[ ! -f $WORKDIR/kernel49.tar ]]; then
+#	wget --show-progress -qO $WORKDIR/kernel49.tar.xz https://cdn.kernel.org/pub/linux/kernel/v4.x/linux-4.9.tar.xz
+#	echo "Unzipping kernel tarball..."
+#	xz -d -q $WORKDIR/kernel49.tar.xz
+#fi
+
+if [[ ! -f $WORKDIR/firefox68.tar ]]; then
+	wget --show-progress -qO $WORKDIR/firefox68.tar.xz https://ftp.mozilla.org/pub/firefox/releases/68.0esr/source/firefox-68.0esr.source.tar.xz
 	echo "Unzipping kernel tarball..."
-	xz -d -q $WORKDIR/kernel49.tar.xz
+	xz -d -q $WORKDIR/firefox68.tar.xz
 fi
 
-if [[ ! -f $WORKDIR/pi.c ]] ; then
+if [[ ! -f $WORKDIR/pi ]] ; then
 	wget --show-progress -qO $WORKDIR/pi.c https://gmplib.org/download/misc/gmp-chudnovsky.c
+	echo "Compiling pi source file..."
+	gcc -O3 -march=native $WORKDIR/pi.c -o $WORKDIR/pi -lm -lgmp
+	rm $WORKDIR/pi.c
 fi
 
 if [[ ! -d $WORKDIR/stress-ng ]]; then
@@ -224,17 +238,16 @@ if [[ ! -d $WORKDIR/ffmpeg-1529dfb ]]; then
   	  --disable-doc --disable-network --disable-protocols --disable-lzma \
   	  --disable-amf --disable-cuda-llvm --disable-cuvid --disable-d3d11va --disable-dxva2 \
   	  --disable-nvdec --disable-nvenc --disable-vaapi --disable-vdpau --disable-sdl2 \
-  	  --disable-schannel --disable-securetransport --disable-libfontconfig \
-  	  --disable-libfreetype --enable-libspeex --enable-libvpx --enable-libopus --enable-libvorbis \
+  	  --disable-schannel --disable-securetransport --enable-libfontconfig \
+  	  --enable-libfreetype --enable-libspeex --enable-libvpx --enable-libopus --enable-libvorbis \
   	  --enable-libx264 --enable-libx265 --enable-opengl --enable-libdrm --enable-gpl \
   	  --enable-gmp --enable-gnutls --disable-avx512 --disable-fma4 --disable-autodetect \
   	  --enable-version3 &>/dev/null
 fi
 
-echo "Compiling pi source file..."
-gcc -O3 -march=native $WORKDIR/pi.c -o $WORKDIR/pi -lm -lgmp
+### main
 
-echo -e "Starting...\n" ; sync ; sleep 1
+echo -e "\nStarting...\n" ; sync ; sleep 1
 echo "=====__==__ ========================== _____======"
 echo "====|  \/  |==== MINI BENCHMARKER ====| ___ ))===="
 echo "====| |\/| |======= by torvic9 =======| ___ \====="
@@ -262,13 +275,13 @@ arrayz=(`awk -F': ' '{print $2}' $LOGFILE`)
 # watch!
 
 for ((i=0 ; i<${NRTESTS} ; i++)) ; do
-	ARRAY[$i]="$(echo "scale=10; sqrt(${arrayz[$i]} * 100)" | bc -l)"
+	ARRAY[$i]="$(echo "scale=10; sqrt(${arrayz[$i]} * $COEFF * 100)" | bc -l)"
 done
 
 #TTIME="$(echo "${arrayz[@]}" | sed 's/ /+/g' | bc)"
 TTIME="$(IFS="+" ; bc <<< "scale=2; ${arrayz[*]}")"
 INTSCORE="$(IFS="+" ; bc -l <<< "scale=2; ${ARRAY[*]}")"
-SCORE="$(bc -l <<< "scale=0; $INTSCORE * $COEFF / $NRTESTS")"
+SCORE="$(bc -l <<< "scale=2; $INTSCORE / $NRTESTS")"
 echo "--------------------------------------------------"
 echo "Total time in seconds:"
 echo "--------------------------------------------------"
