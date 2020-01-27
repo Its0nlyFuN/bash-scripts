@@ -1,0 +1,50 @@
+# HPL benchmark for AMD
+# Maintainer: torvic9
+
+pkgname=hpl-amd
+pkgver=2.3
+pkgrel=1
+pkgdesc='High Performance Linpack with AMD BLIS library'
+arch=('x86_64')
+licence=('custom:bsd')
+depends=('openmpi')
+makedepends=('openmpi' 'gcc' 'python' 'make')
+conflicts=('hpl')
+source=(https://github.com/amd/blis/archive/2.1.tar.gz
+	http://www.netlib.org/benchmark/hpl/hpl-2.3.tar.gz
+	Make.AMD_BLIS
+	HPL.dat
+	hpl-2.3-arch.patch)
+_cflags="-O3 -march=native -pipe"
+_ldflags="-Wl,-O1,--as-needed"
+_cores=`nproc`
+options=(!makeflags)
+sha1sums=('828ae2285010765c89dd59ac3d08e4d642cd3bc7'
+          '3e390755b168a24f0683a949b189144edb614207'
+          '9204cdfd5bff1efddcce1f1e12942401f9664d8c'
+          '5f66e184a273e8e084a8e890459a83c82d1fd995'
+          '6d74c460d478ecd3cfdf7c1a16d2f528cb78c071')
+
+prepare() {
+	cd $srcdir/hpl-2.3
+	patch -p1 -i "$srcdir/hpl-2.3-arch.patch"
+	cat $srcdir/Make.AMD_BLIS > $srcdir/hpl-2.3/Make.AMD_BLIS
+	cd $srcdir/blis-2.1
+	CFLAGS=${_cflags} LDFLAGS=${_ldflags} ./configure -t openmp --enable-static --enable-cblas --prefix=../blis auto
+}
+
+build() {
+	cd $srcdir/blis-2.1
+	make -j${_cores} && make install
+	cd $srcdir/hpl-2.3
+	cat ../HPL.dat > ./testing/ptest/HPL.dat
+	MPI_BIN=/usr/bin make -j${_cores} TOPdir="`pwd`" arch=AMD_BLIS || continue
+	MPI_BIN=/usr/bin make -j${_cores} TOPdir="`pwd`" arch=AMD_BLIS
+}
+
+package() {
+	cd $srcdir
+	install -Dm755 ./hpl-2.3/bin/AMD_BLIS/xhpl $pkgdir/usr/bin/xhpl
+	install -Dm644 ./hpl-2.3/bin/AMD_BLIS/HPL.dat $pkgdir/etc/hpl/HPL.dat
+}
+

@@ -1,0 +1,32 @@
+SHELL        = /bin/sh
+CD           = cd
+CP           = cp -fv
+LN_S         = ln -sf
+MKDIR        = mkdir -p
+RM           = /bin/rm -f
+TOUCH        = touch
+ARCH         = AMD_BLIS
+INCdir       = $(TOPdir)/include
+BINdir       = $(TOPdir)/bin/$(ARCH)
+LIBdir       = $(TOPdir)/lib/$(ARCH)
+HPLlib       = $(LIBdir)/libhpl.a
+MPdir        = /usr/lib/openmpi
+MPinc        = -I$(MPdir)
+MPlib        = $(MPdir)/libmpi.so
+LAdir        = $(TOPdir)/../blis
+LAinc        = $(LAdir)/include/blis
+LAlib        = $(LAdir)/lib/libblis-mt.a
+F2CDEFS      = -DAdd__ -DF77_INTEGER=int -DStringSunStyle
+HPL_INCLUDES = -I$(INCdir) -I$(INCdir)/$(ARCH) -I$(LAinc) $(MPinc)
+HPL_LIBS     = $(HPLlib) $(LAlib) $(MPlib) -lm -lpthread
+HPL_OPTS     = -DHPL_CALL_CBLAS
+HPL_DEFS     = $(F2CDEFS) $(HPL_OPTS) $(HPL_INCLUDES)
+CC           = /usr/bin/mpicc
+CCNOOPT      = $(HPL_DEFS)
+CCFLAGS      = $(HPL_DEFS) -std=c99 -march=native -fomit-frame-pointer -O3 -pipe -funroll-loops -W -Wall -fopenmp
+LINKER       = /usr/bin/mpicc
+LINKFLAGS    = $(CCFLAGS) -Wl,-O1,--as-needed
+ARCHIVER     = ar
+ARFLAGS      = r
+RANLIB       = echo
+
