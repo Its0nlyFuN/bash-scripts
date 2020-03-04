@@ -40,7 +40,7 @@ runffm() {
 
 runxz() {
 	local RESFILE="$WORKDIR/runxz"
- 	/usr/bin/time -f %e -o $RESFILE xz -z -k -T${CPUCORES} --lzma2=preset=6e,pb=0 -Qqq -f $WORKDIR/firefox68.tar &
+ 	/usr/bin/time -f %e -o $RESFILE xz -z -k -T${CPUCORES} --lzma2=preset=6e,pb=0 -Qqq -f $WORKDIR/firefox60.tar &
 #	/usr/bin/time -f %e -o $RESFILE zstd -k -T${CPUCORES} -19 -qq -f $WORKDIR/kernel49.tar &
 	local PID=$!
 	echo -n -e "* xz compression:\t\t\t"
@@ -52,7 +52,7 @@ runxz() {
 
 runargon() {
 	local RESFILE="$WORKDIR/runargon"
-	/usr/bin/time -f %e -o $RESFILE argon2 BenchieSalt -i -t 60 -m 20 -p $CPUCORES &>/dev/null <<< $(dd if=/dev/urandom bs=1 count=64 status=none) &
+	/usr/bin/time -f %e -o $RESFILE argon2 BenchieSalt -i -t 50 -m 20 -p $CPUCORES &>/dev/null <<< $(dd if=/dev/urandom bs=1 count=64 status=none) &
 	local PID=$!
 	echo -n -e "* argon2 hashing:\t\t\t"
 	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep 1; done
@@ -74,7 +74,7 @@ runperf1() {
 
 runperf2() {
 	local RESFILE="$WORKDIR/runperf"
-	/usr/bin/time -f %e -o $RESFILE perf bench -f simple mem memcpy --nr_loops 60 --size 2GB -f x86-64-unrolled &>/dev/null &
+	/usr/bin/time -f %e -o $RESFILE perf bench -f simple mem memcpy --nr_loops 60 --size 2GB -f x86-64-movsb &>/dev/null &
 	local PID=$!
 	echo -n -e "* perf memcpy:\t\t\t\t"
 	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep 1; done
@@ -85,12 +85,12 @@ runperf2() {
 
 runpi() {
 	local RESFILE="$WORKDIR/runpi"
-	/usr/bin/time -f%e -o $RESFILE $WORKDIR/pi 66000000 1>/dev/null &
+	/usr/bin/time -f%e -o $RESFILE $WORKDIR/pi 60000000 1>/dev/null &
 	local PID=$!
-	echo -n -e "* calculating 66m digits of pi:\t\t"
+	echo -n -e "* calculating 60m digits of pi:\t\t"
 	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep 1; done
 	printf "\b " ; cat $RESFILE
-	echo "calculating 66m digits of pi: $(cat $RESFILE)" >> $LOGFILE
+	echo "calculating 60m digits of pi: $(cat $RESFILE)" >> $LOGFILE
 	return 0
 }
 
@@ -101,7 +101,7 @@ killproc() {
 
 exitproc() {
 	echo -e "Removing temporary files...\n"
-	for i in $WORKDIR/{run*,ffmpeg.tar.gz,stress-ng.tar.xz,firefox68.tar.xz,pi.c} ; do
+	for i in $WORKDIR/{run*,ffmpeg.tar.gz,stress-ng.tar.xz,firefox60.tar.xz,pi.c,stressC,stressR} ; do
 		[[ -f $i ]] && rm $i
 		[[ -d $i ]] && rm -r $i
 	done
@@ -117,7 +117,7 @@ RAMSIZE=`awk '/MemTotal/{print int($2 / 1000)}' /proc/meminfo`
 CPUCORES=`nproc`
 CPUGOV=`cat /sys/devices/system/cpu/cpufreq/policy0/scaling_governor`
 CPUFREQ=`awk '{print $1 / 1000000}' /sys/devices/system/cpu/cpufreq/policy0/cpuinfo_max_freq`
-COEFF=$(echo "scale=4; l(${CPUCORES} + ${CPUFREQ})" | bc -l)
+COEFF=$(echo "scale=4; l(${CPUCORES} / 2 + ${CPUFREQ})" | bc -l)
 NRTESTS=8
 SYSINFO=$(inxi -c0 -v | sed "s/Up:.*//;s/inxi:.*//;s/Storage:.*//")
 STRESS=${WORKDIR}/stress-ng/usr/bin/stress-ng
@@ -132,7 +132,7 @@ EOF
 echo "cpu-ops $((12000 / ${CPUCORES}))" >> $WORKDIR/stressC
 cat >> $WORKDIR/stressC <<- EOF
 bsearch CPUCORES
-bsearch-size 131072
+bsearch-size 262144
 EOF
 echo "bsearch-ops $((2400 / ${CPUCORES}))" >> $WORKDIR/stressC
 cat >> $WORKDIR/stressC <<- EOF
@@ -146,26 +146,24 @@ timeout 0
 vm CPUCORES
 vm-method read64
 vm-lock
-vm-bytes 2G
+vm-bytes 1G
 EOF
 echo "vm-ops $((12000 / ${CPUCORES}))" >> $WORKDIR/stressR
 cat >> $WORKDIR/stressR <<- EOF
 vm CPUCORES
 vm-method write64
 vm-lock
-vm-bytes 2G
+vm-bytes 1G
 EOF
 echo "vm-ops $((12000 / ${CPUCORES}))" >> $WORKDIR/stressR
 cat >> $WORKDIR/stressR <<- EOF
-mmap CPUCORES
-mmap-bytes 256M
+stream CPUCORES
+stream-index 1
 EOF
-echo "mmap-ops $((2400 / ${CPUCORES}))" >> $WORKDIR/stressR
-
+echo "stream-ops $((2400 / ${CPUCORES}))" >> $WORKDIR/stressR
 
 sed -i "s/CPUCORES/$CPUCORES/g" $WORKDIR/stressC
 sed -i "s/CPUCORES/$CPUCORES/g" $WORKDIR/stressR
-
 
 # I leave this for reference
 #CPUFREQ=$(cpupower frequency-info -l | grep -v "analyzing" | awk '{print $2 / 1000000}')
@@ -203,10 +201,10 @@ echo -e "\nChecking, downloading and preparing test files...\n"
 #	xz -d -q $WORKDIR/kernel49.tar.xz
 #fi
 
-if [[ ! -f $WORKDIR/firefox68.tar ]]; then
-	wget --show-progress -qO $WORKDIR/firefox68.tar.xz https://ftp.mozilla.org/pub/firefox/releases/68.0esr/source/firefox-68.0esr.source.tar.xz
-	echo "Unzipping kernel tarball..."
-	xz -d -q $WORKDIR/firefox68.tar.xz
+if [[ ! -f $WORKDIR/firefox60.tar ]]; then
+	wget --show-progress -qO $WORKDIR/firefox60.tar.xz https://ftp.mozilla.org/pub/firefox/releases/60.9.0esr/source/firefox-60.9.0esr.source.tar.xz
+	echo "Unzipping Firefox tarball..."
+	xz -d -q $WORKDIR/firefox60.tar.xz
 fi
 
 if [[ ! -f $WORKDIR/pi ]] ; then
@@ -217,14 +215,14 @@ if [[ ! -f $WORKDIR/pi ]] ; then
 fi
 
 if [[ ! -d $WORKDIR/stress-ng ]]; then
-	wget --show-progress -qO $WORKDIR/stress-ng.tar.xz https://kernel.ubuntu.com/~cking/tarballs/stress-ng/stress-ng-0.10.15.tar.xz
+	wget --show-progress -qO $WORKDIR/stress-ng.tar.xz https://kernel.ubuntu.com/~cking/tarballs/stress-ng/stress-ng-0.10.19.tar.xz
 	echo "Preparing stress-ng..."
 	cd $WORKDIR
 	tar xf stress-ng.tar.xz
-	cd stress-ng-0.10.15
+	cd stress-ng-0.10.19
 	sed -i 's/\-O2/\-O2\ \-march\=native/' Makefile
 	make -s -j${CPUCORES} &>/dev/null && make -s DESTDIR=$WORKDIR/stress-ng install &>/dev/null
-	cd .. && rm -rf stress-ng-0.10.15
+	cd .. && rm -rf stress-ng-0.10.19
 fi
 
 if [[ ! -d $WORKDIR/ffmpeg-1529dfb ]]; then

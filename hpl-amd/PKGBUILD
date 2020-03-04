@@ -7,21 +7,21 @@ pkgrel=1
 pkgdesc='High Performance Linpack with AMD BLIS library'
 arch=('x86_64')
 licence=('custom:bsd')
-depends=('openmpi')
-makedepends=('openmpi' 'gcc' 'python' 'make')
+depends=('openmp' 'openmpi')
+makedepends=('openmp' 'openmpi' 'gcc' 'python' 'make')
 conflicts=('hpl')
 source=(https://github.com/amd/blis/archive/2.1.tar.gz
 	http://www.netlib.org/benchmark/hpl/hpl-2.3.tar.gz
 	Make.AMD_BLIS
 	HPL.dat
 	hpl-2.3-arch.patch)
-_cflags="-O3 -march=native -pipe"
-_ldflags="-Wl,-O1,--as-needed"
+_cflags="-O3 -march=native -pipe -pthread -fopenmp"
+_ldflags="-Wl,-O1,-z,relro,-z,now,--as-needed"
 _cores=`nproc`
 options=(!makeflags)
 sha1sums=('828ae2285010765c89dd59ac3d08e4d642cd3bc7'
           '3e390755b168a24f0683a949b189144edb614207'
-          '9204cdfd5bff1efddcce1f1e12942401f9664d8c'
+          'c19c903f878f88aa2f538fe1891b9c0a177f7419'
           '5f66e184a273e8e084a8e890459a83c82d1fd995'
           '6d74c460d478ecd3cfdf7c1a16d2f528cb78c071')
 
@@ -30,7 +30,7 @@ prepare() {
 	patch -p1 -i "$srcdir/hpl-2.3-arch.patch"
 	cat $srcdir/Make.AMD_BLIS > $srcdir/hpl-2.3/Make.AMD_BLIS
 	cd $srcdir/blis-2.1
-	CFLAGS=${_cflags} LDFLAGS=${_ldflags} ./configure -t openmp --enable-static --enable-cblas --prefix=../blis auto
+	CFLAGS=${_cflags} LDFLAGS=${_ldflags} ./configure -t openmp --enable-static --enable-cblas --enable-verbose-make --prefix=../blis auto
 }
 
 build() {
