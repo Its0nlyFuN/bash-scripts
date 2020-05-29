@@ -215,14 +215,14 @@ if [[ ! -f $WORKDIR/pi ]] ; then
 fi
 
 if [[ ! -d $WORKDIR/stress-ng ]]; then
-	wget --show-progress -qO $WORKDIR/stress-ng.tar.xz https://kernel.ubuntu.com/~cking/tarballs/stress-ng/stress-ng-0.10.19.tar.xz
+	wget --show-progress -qO $WORKDIR/stress-ng.tar.xz https://kernel.ubuntu.com/~cking/tarballs/stress-ng/stress-ng-0.11.10.tar.xz
 	echo "Preparing stress-ng..."
 	cd $WORKDIR
 	tar xf stress-ng.tar.xz
-	cd stress-ng-0.10.19
-	sed -i 's/\-O2/\-O2\ \-march\=native/' Makefile
+	cd stress-ng-0.11.10
+	sed -i 's/\-O2/\-O3\ \-march\=native/' Makefile
 	make -s -j${CPUCORES} &>/dev/null && make -s DESTDIR=$WORKDIR/stress-ng install &>/dev/null
-	cd .. && rm -rf stress-ng-0.10.19
+	cd .. && rm -rf stress-ng-0.11.10
 fi
 
 if [[ ! -d $WORKDIR/ffmpeg-1529dfb ]]; then
