@@ -7,7 +7,7 @@
 
 [[ -z $1 ]] && echo "specify full path for build files!" && exit 4
 TOPLEV=$1
-PKGVER="10.0.0"
+PKGVER="10.0.1rc1"
 NCORES=`nproc`
 export CFLAGS="-O3 -march=native -pipe"
 export CXXFLAGS="-O3 -march=native -pipe"
@@ -28,6 +28,7 @@ COMMONFLAGS="-DLLVM_ENABLE_PROJECTS=clang;clang-tools-extra;compiler-rt;lld \
 -DLLVM_ENABLE_TERMINFO=OFF \
 -DLLVM_INCLUDE_DOCS=OFF \
 -DLLVM_INCLUDE_EXAMPLES=OFF \
+ DLLVM_ENABLE_FFI=ON \
 -DCOMPILER_RT_BUILD_LIBFUZZER=OFF \
 -DCLANG_LINK_CLANG_DYLIB=ON \
 -DCLANG_PLUGIN_SUPPORT=OFF \
@@ -48,8 +49,8 @@ COMMONFLAGS="-DLLVM_ENABLE_PROJECTS=clang;clang-tools-extra;compiler-rt;lld \
 
 cd $TOPLEV
 if [[ ! -d llvm-${PKGVER}.src ]] ; then
-	wget -nc -qO llvm.tar.xz --show-progress https://github.com/llvm/llvm-project/releases/download/llvmorg-${PKGVER}/llvm-project-${PKGVER}.src.tar.xz
-	tar xf llvm.tar.xz
+	wget -nc -qO llvm-${PKGVER}.tar.xz --show-progress https://github.com/llvm/llvm-project/releases/download/llvmorg-10.0.1-rc1/llvm-project-${PKGVER}.src.tar.xz
+	tar xf llvm-${PKGVER}.tar.xz
 fi
 
 if [[ ! -d $TOPLEV/stage1 ]] ; then
@@ -105,11 +106,10 @@ CPATH=$TOPLEV/stage1/install/bin/
 ninja clean
 cmake -G Ninja "$TOPLEV/llvm-project-${PKGVER}/llvm" -DCMAKE_C_COMPILER=$CPATH/clang \
 -DCMAKE_CXX_COMPILER=$CPATH/clang++ -DCMAKE_INSTALL_PREFIX="$TOPLEV/stage4-final/Release" \
--DLLVM_USE_LINKER=lld -DLLVM_ENABLE_LTO=Full -DLLVM_ENABLE_FFI=ON \
--DFFI_INCLUDE_DIR=$(pkg-config --variable=includedir libffi) \
+-DLLVM_USE_LINKER=lld -DLLVM_ENABLE_LTO=Thin
 -DLLVM_PROFDATA_FILE="${TOPLEV}/stage2-gen/profiles/clang.profdata" ${COMMONFLAGS} || exit 8
 echo "---> STAGE 4 FINAL"
-ninja check-lld ; ninja check-clang || exit 32
+ninja check-lld || exit 32 ; ninja check-clang || exit 32
 ninja install || exit 16
 
 echo "---> DONE!"
