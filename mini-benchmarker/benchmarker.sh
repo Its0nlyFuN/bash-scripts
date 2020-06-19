@@ -25,8 +25,21 @@ runstress2() {
 	return 0
 }
 
+runblend() {
+	local RESFILE="$WORKDIR/runblend"
+	local TMP="$WORKDIR"
+	local BLENDER_USER_CONFIG="$WORKDIR"
+	/usr/bin/time -f %e -o $RESFILE blender -b $WORKDIR/blender/bmw27_cpu.blend -o $WORKDIR/blenderbmw.png -f 1 --verbose 0 -t 0 &>/dev/null &
+	local PID=$!
+	echo -n -e "* Blender render:\t\t\t"
+	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep .5; done
+	printf "\b " ; cat $RESFILE
+	echo "Blender render: $(cat $RESFILE)" >> $LOGFILE
+	return 0
+}
+
 runffm() {
-	cd $WORKDIR/ffmpeg-1529dfb
+	cd $WORKDIR/ffmpeg-d3b963c
 	local RESFILE="$WORKDIR/runffm"
 	make -s clean &>/dev/null && sleep 1
 	/usr/bin/time -f %e -o $RESFILE make -s -j${CPUCORES} &>/dev/null &
@@ -52,7 +65,7 @@ runxz() {
 
 runargon() {
 	local RESFILE="$WORKDIR/runargon"
-	/usr/bin/time -f %e -o $RESFILE argon2 BenchieSalt -i -t 50 -m 20 -p $CPUCORES &>/dev/null <<< $(dd if=/dev/urandom bs=1 count=64 status=none) &
+	/usr/bin/time -f %e -o $RESFILE argon2 BenchieSalt -i -t 40 -m 20 -p $CPUCORES &>/dev/null <<< $(dd if=/dev/urandom bs=1 count=64 status=none) &
 	local PID=$!
 	echo -n -e "* argon2 hashing:\t\t\t"
 	local s='-\|/'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %4 )); printf "\b${s:$i:1}"; sleep 1; done
@@ -101,7 +114,7 @@ killproc() {
 
 exitproc() {
 	echo -e "Removing temporary files...\n"
-	for i in $WORKDIR/{run*,ffmpeg.tar.gz,stress-ng.tar.xz,firefox60.tar.xz,pi.c,stressC,stressR} ; do
+	for i in $WORKDIR/{run*,ffmpeg.tar.gz,stress-ng.tar.xz,firefox60.tar.xz,blender*.png,blender,pi.c,stressC,stressR} ; do
 		[[ -f $i ]] && rm $i
 		[[ -d $i ]] && rm -r $i
 	done
@@ -118,7 +131,7 @@ CPUCORES=`nproc`
 CPUGOV=`cat /sys/devices/system/cpu/cpufreq/policy0/scaling_governor`
 CPUFREQ=`awk '{print $1 / 1000000}' /sys/devices/system/cpu/cpufreq/policy0/cpuinfo_max_freq`
 COEFF=$(echo "scale=4; l(${CPUCORES} / 2 + ${CPUFREQ})" | bc -l)
-NRTESTS=8
+NRTESTS=9
 SYSINFO=$(inxi -c0 -v | sed "s/Up:.*//;s/inxi:.*//;s/Storage:.*//")
 STRESS=${WORKDIR}/stress-ng/usr/bin/stress-ng
 
@@ -215,23 +228,29 @@ if [[ ! -f $WORKDIR/pi ]] ; then
 fi
 
 if [[ ! -d $WORKDIR/stress-ng ]]; then
-	wget --show-progress -qO $WORKDIR/stress-ng.tar.xz https://kernel.ubuntu.com/~cking/tarballs/stress-ng/stress-ng-0.11.10.tar.xz
+	wget --show-progress -qO $WORKDIR/stress-ng.tar.xz https://kernel.ubuntu.com/~cking/tarballs/stress-ng/stress-ng-0.11.14.tar.xz
 	echo "Preparing stress-ng..."
 	cd $WORKDIR
 	tar xf stress-ng.tar.xz
-	cd stress-ng-0.11.10
+	cd stress-ng-0.11.14
 	sed -i 's/\-O2/\-O3\ \-march\=native/' Makefile
 	make -s -j${CPUCORES} &>/dev/null && make -s DESTDIR=$WORKDIR/stress-ng install &>/dev/null
-	cd .. && rm -rf stress-ng-0.11.10
+	cd .. && rm -rf stress-ng-0.11.14
 fi
 
-if [[ ! -d $WORKDIR/ffmpeg-1529dfb ]]; then
-	wget --show-progress -qO $WORKDIR/ffmpeg.tar.gz https://git.ffmpeg.org/gitweb/ffmpeg.git/snapshot/1529dfb73a5157dcb8762051ec4c8d8341762478.tar.gz
+if [[ ! -f $WORKDIR/blender.zip ]]; then
+	wget --show-progress -qO $WORKDIR/blender.zip https://download.blender.org/demo/test/BMW27_2.blend.zip
+	echo "Unzipping Blender demo files..."
+    unzip -qqj $WORKDIR/blender.zip -d $WORKDIR/blender
+fi
+
+if [[ ! -d $WORKDIR/ffmpeg-d3b963c ]]; then
+	wget --show-progress -qO $WORKDIR/ffmpeg.tar.gz https://git.ffmpeg.org/gitweb/ffmpeg.git/snapshot/d3b963cc41824a3c5b2758ac896fb23e20a87875.tar.gz
 	echo "Preparing ffmpeg..."
 	cd $WORKDIR
 	tar xf ffmpeg.tar.gz
-	cd ffmpeg-1529dfb
-	./configure --prefix=/tmp --disable-debug --enable-static --enable-stripping \
+	cd ffmpeg-d3b963c
+	./configure --prefix=/tmp --disable-debug --enable-static \
   	  --disable-ladspa --disable-programs --disable-ffplay --disable-ffprobe \
   	  --disable-doc --disable-network --disable-protocols --disable-lzma \
   	  --disable-amf --disable-cuda-llvm --disable-cuvid --disable-d3d11va --disable-dxva2 \
@@ -255,6 +274,7 @@ echo "=================================================="
 # start
 trap killproc INT
 trap exitproc EXIT
+runblend ; sleep 3
 runstress1; sleep 3
 runstress2; sleep 3
 runperf1 ; sleep 3
@@ -263,6 +283,7 @@ runpi ; sleep 3
 runargon ; sleep 3
 runffm ; sync ; sleep 3
 runxz ; sync ; sleep 3
+
 
 unset arrayz; unset ARRAY
 arrayz=(`awk -F': ' '{print $2}' $LOGFILE`)

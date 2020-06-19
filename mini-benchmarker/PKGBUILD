@@ -8,7 +8,7 @@ url="https://github.com/torvic9/bash-scripts"
 arch=('x86_64')
 licence=('GPL3')
 depends=('make' 'cmake' 'time' 'perf' 'unzip'
-	 'nasm' 'inxi' 'argon2' 'gmp' 'wget')
+	 'nasm' 'inxi' 'argon2' 'gmp' 'wget' 'blender')
 source=(git+https://github.com/torvic9/bash-scripts.git)
 sha512sums=('SKIP')
 

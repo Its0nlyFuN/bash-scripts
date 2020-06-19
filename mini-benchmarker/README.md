@@ -5,3 +5,4 @@
 * ffmpeg compilation
 * pi calculation
 * argon2 hashing
+* blender rendering
