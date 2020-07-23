@@ -7,10 +7,10 @@
 
 [[ -z $1 ]] && echo "specify full path for build files!" && exit 4
 TOPLEV=$1
-PKGVER="10.0.1rc1"
+PKGVER="10.0.1"
 NCORES=`nproc`
-export CFLAGS="-O3 -march=native -pipe"
-export CXXFLAGS="-O3 -march=native -pipe"
+export CFLAGS="-O2 -march=native -pipe"
+export CXXFLAGS="-O2 -march=native -pipe"
 #export LDFLAGS="-Wl,-O1"
 COMMONFLAGS="-DLLVM_ENABLE_PROJECTS=clang;clang-tools-extra;compiler-rt;lld \
 -DLLVM_LINK_LLVM_DYLIB=ON \
@@ -48,10 +48,18 @@ COMMONFLAGS="-DLLVM_ENABLE_PROJECTS=clang;clang-tools-extra;compiler-rt;lld \
 
 [[ ! -d $TOPLEV ]] && mkdir $TOPLEV
 cd $TOPLEV
-if [[ ! -d llvm-${PKGVER}.src ]] ; then
-	wget -nc -qO llvm-${PKGVER}.tar.xz --show-progress https://github.com/llvm/llvm-project/releases/download/llvmorg-10.0.1-rc1/llvm-project-${PKGVER}.tar.xz
+if [[ ! -d llvm-project-${PKGVER} ]] ; then
+	wget -qO llvm-${PKGVER}.tar.xz --show-progress https://github.com/llvm/llvm-project/releases/download/llvmorg-10.0.1/llvm-project-${PKGVER}.tar.xz
 	tar xf llvm-${PKGVER}.tar.xz
 fi
+
+#[[ ! -d $TOPLEV ]] && mkdir $TOPLEV
+#cd $TOPLEV
+#if [[ -d llvm-project ]] ; then
+#	cd llvm-project && git checkout release/10.x && git pull && git checkout tags/llvmorg-$PKGVER
+#else
+#	git clone https://github.com/llvm/llvm-project.git -b release/10.x --single-branch && cd llvm-project && git checkout tags/llvmorg-$PKGVER
+#fi
 
 if [[ ! -d $TOPLEV/stage1 ]] ; then
 	mkdir $TOPLEV/stage1
