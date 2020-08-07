@@ -7,12 +7,12 @@
 
 [[ -z $1 ]] && echo "specify full path for build files!" && exit 4
 TOPLEV=$1
-PKGVER="10.0.1"
+PKGVER="11.0.0-rc1"
 NCORES=`nproc`
 export CFLAGS="-O2 -march=native -pipe"
 export CXXFLAGS="-O2 -march=native -pipe"
 #export LDFLAGS="-Wl,-O1"
-COMMONFLAGS="-DLLVM_ENABLE_PROJECTS=clang;clang-tools-extra;compiler-rt;lld \
+COMMONFLAGS="-DLLVM_ENABLE_PROJECTS=\"clang;clang-tools-extra;compiler-rt;lld\" \
 -DLLVM_LINK_LLVM_DYLIB=ON \
 -DLLVM_TARGETS_TO_BUILD=X86;AMDGPU
 -DLLVM_HOST_TRIPLE=x86_64-pc-linux-gnu \
@@ -31,7 +31,7 @@ COMMONFLAGS="-DLLVM_ENABLE_PROJECTS=clang;clang-tools-extra;compiler-rt;lld \
 -DLLVM_INCLUDE_EXAMPLES=OFF \
 -DCOMPILER_RT_BUILD_LIBFUZZER=OFF \
 -DCLANG_LINK_CLANG_DYLIB=ON \
--DCLANG_PLUGIN_SUPPORT=OFF \
+-DCLANG_PLUGIN_SUPPORT=ON \
 -DCLANG_ENABLE_ARCMT=OFF \
 -DCLANG_ENABLE_STATIC_ANALYZER=OFF"
 
@@ -48,8 +48,8 @@ COMMONFLAGS="-DLLVM_ENABLE_PROJECTS=clang;clang-tools-extra;compiler-rt;lld \
 
 [[ ! -d $TOPLEV ]] && mkdir $TOPLEV
 cd $TOPLEV
-if [[ ! -d llvm-project-${PKGVER} ]] ; then
-	wget -qO llvm-${PKGVER}.tar.xz --show-progress https://github.com/llvm/llvm-project/releases/download/llvmorg-10.0.1/llvm-project-${PKGVER}.tar.xz
+if [[ ! -d llvm-project-${PKGVER/-/} ]] ; then
+	wget -O llvm-${PKGVER}.tar.xz --show-progress https://github.com/llvm/llvm-project/releases/download/llvmorg-${PKGVER}/llvm-project-${PKGVER/-/}.tar.xz
 	tar xf llvm-${PKGVER}.tar.xz
 fi
 
@@ -67,7 +67,7 @@ fi
 cd $TOPLEV/stage1
 if [[ ! -f ./bin/clang-10 ]] ; then
 	ninja clean
-	cmake -G Ninja "$TOPLEV/llvm-project-${PKGVER}/llvm" -DCMAKE_C_COMPILER=/usr/bin/gcc -DCMAKE_CXX_COMPILER=/usr/bin/g++ \
+	cmake -G Ninja "$TOPLEV/llvm-project-${PKGVER/-/}/llvm" -DCMAKE_C_COMPILER=/usr/bin/gcc -DCMAKE_CXX_COMPILER=/usr/bin/g++ \
 -DLLVM_CCACHE_BUILD=ON -DCMAKE_INSTALL_PREFIX="$TOPLEV/stage1/install" \
 -DCOMPILER_RT_BUILD_SANITIZERS=OFF -DLLVM_ENABLE_BACKTRACES=OFF -DLLVM_INCLUDE_TESTS=OFF \
 -DLLVM_INCLUDE_UTILS=OFF ${COMMONFLAGS} || exit 8
@@ -83,9 +83,10 @@ fi
 cd $TOPLEV/stage2-gen
 CPATH=$TOPLEV/stage1/install/bin/
 ninja clean
-cmake -G Ninja "$TOPLEV/llvm-project-${PKGVER}/llvm" -DCMAKE_C_COMPILER=$CPATH/clang \
+cmake -G Ninja "$TOPLEV/llvm-project-${PKGVER/-/}/llvm" -DCMAKE_C_COMPILER=$CPATH/clang \
 -DCMAKE_CXX_COMPILER=$CPATH/clang++ -DCMAKE_INSTALL_PREFIX="$TOPLEV/stage2-gen/install" \
--DLLVM_USE_LINKER=lld -DLLVM_BUILD_INSTRUMENTED=IR -DLLVM_BUILD_RUNTIME=OFF ${COMMONFLAGS} || exit 8
+-DLLVM_USE_LINKER=lld -DLLVM_BUILD_INSTRUMENTED=IR -DLLVM_BUILD_RUNTIME=OFF ${COMMONFLAGS} \
+-DLLVM_ENABLE_PROJECTS="clang;clang-tools-extra;compiler-rt;lld;polly" || exit 8
 echo "----> STAGE 2 GENERATION"
 ninja install || exit 16
 
@@ -97,9 +98,9 @@ fi
 cd $TOPLEV/stage3-train
 CPATH=$TOPLEV/stage2-gen/install/bin
 ninja clean
-cmake -G Ninja "$TOPLEV/llvm-project-${PKGVER}/llvm" -DCMAKE_C_COMPILER=$CPATH/clang \
+cmake -G Ninja "$TOPLEV/llvm-project-${PKGVER/-/}/llvm" -DCMAKE_C_COMPILER=$CPATH/clang \
 -DCMAKE_CXX_COMPILER=$CPATH/clang++ -DCMAKE_INSTALL_PREFIX="$TOPLEV/stage3-train/install" \
--DLLVM_USE_LINKER=lld ${COMMONFLAGS} || exit 8
+-DLLVM_USE_LINKER=lld ${COMMONFLAGS} -DLLVM_ENABLE_PROJECTS="clang;clang-tools-extra;compiler-rt;lld;polly" || exit 8
 echo "----> STAGE 3 TRAIN"
 ninja clang || exit 16
 
@@ -114,12 +115,13 @@ fi
 cd $TOPLEV/stage4-final
 CPATH=$TOPLEV/stage1/install/bin/
 ninja clean
-cmake -G Ninja "$TOPLEV/llvm-project-${PKGVER}/llvm" -DCMAKE_C_COMPILER=$CPATH/clang \
+cmake -G Ninja "$TOPLEV/llvm-project-${PKGVER/-/}/llvm" -DCMAKE_C_COMPILER=$CPATH/clang \
 -DCMAKE_CXX_COMPILER=$CPATH/clang++ -DCMAKE_INSTALL_PREFIX="$TOPLEV/stage4-final/Release" \
--DLLVM_USE_LINKER=lld -DLLVM_ENABLE_LTO=Full -DLLVM_ENABLE_FFI=ON \
--DLLVM_PROFDATA_FILE="${TOPLEV}/stage2-gen/profiles/clang.profdata" ${COMMONFLAGS} || exit 8
+-DLLVM_USE_LINKER=lld -DLLVM_ENABLE_LTO=Thin -DLLVM_ENABLE_FFI=ON \
+-DLLVM_PROFDATA_FILE="${TOPLEV}/stage2-gen/profiles/clang.profdata" ${COMMONFLAGS} \
+-DLLVM_ENABLE_PROJECTS="clang;clang-tools-extra;compiler-rt;lld;polly" || exit 8
 echo "---> STAGE 4 FINAL"
-ninja check-lld || exit 32 ; ninja check-clang || exit 32
+ninja check-lld || exit 32 ; ninja check-clang || exit 32 ; ninja check-polly || exit 32
 ninja install || exit 16
 
 echo "----> DONE!"

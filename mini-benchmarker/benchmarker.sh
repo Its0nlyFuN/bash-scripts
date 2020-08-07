@@ -234,7 +234,7 @@ fi
 if [[ ! -d $WORKDIR/blender ]]; then
 	wget --show-progress -qO $WORKDIR/blender.zip https://download.blender.org/demo/test/BMW27_2.blend.zip
 	echo "Unzipping Blender demo files..."
-    unzip -qqj $WORKDIR/blender.zip -d $WORKDIR/blender
+	unzip -qqj $WORKDIR/blender.zip -d $WORKDIR/blender
 fi
 
 if [[ ! -d $WORKDIR/ffmpeg-d3b963c ]]; then
