@@ -172,14 +172,14 @@ timeout 0
 vm CPUCORES
 vm-method read64
 vm-lock
-vm-bytes 1.5G
+vm-bytes 2G
 EOF
 echo "vm-ops $((12000 / ${CPUCORES}))" >> $WORKDIR/stressR
 cat >> $WORKDIR/stressR <<- EOF
 vm CPUCORES
 vm-method write64
 vm-lock
-vm-bytes 1.5G
+vm-bytes 2G
 EOF
 echo "vm-ops $((12000 / ${CPUCORES}))" >> $WORKDIR/stressR
 cat >> $WORKDIR/stressR <<- EOF
