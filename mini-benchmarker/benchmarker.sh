@@ -39,7 +39,7 @@ runblend() {
 }
 
 runffm() {
-	cd $WORKDIR/ffmpeg-d3b963c
+	cd $WORKDIR/ffmpeg-6b6b9e5
 	local RESFILE="$WORKDIR/runffm"
 	make -s clean &>/dev/null && sleep 1
 	/usr/bin/time -f %e -o $RESFILE make -s -j${CPUCORES} &>/dev/null &
@@ -86,7 +86,7 @@ runperf1() {
 
 runperf2() {
 	local RESFILE="$WORKDIR/runperf"
-	/usr/bin/time -f %e -o $RESFILE perf bench -f simple mem memcpy --nr_loops 60 --size 2GB -f x86-64-movsb &>/dev/null &
+	/usr/bin/time -f %e -o $RESFILE perf bench -f simple mem memcpy --nr_loops 100 --size 2GB -f x86-64-movsb &>/dev/null &
 	local PID=$!
 	echo -n -e "* perf memcpy:\t\t\t\t"
 	local s='-+'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %2 )); printf "\b${s:$i:1}"; sleep 1; done
@@ -123,7 +123,7 @@ exitproc() {
 export LANG=C
 CURRDIR=`pwd`
 WORKDIR="$1"
-VER="v1.1"
+VER="v1.2"
 CDATE=`date +%F-%H%M`
 RAMSIZE=`awk '/MemTotal/{print int($2 / 1000)}' /proc/meminfo`
 CPUCORES=`nproc`
@@ -221,14 +221,14 @@ if [[ ! -f $WORKDIR/pi ]] ; then
 fi
 
 if [[ ! -d $WORKDIR/stress-ng ]]; then
-	wget --show-progress -qO $WORKDIR/stress-ng.tar.xz https://kernel.ubuntu.com/~cking/tarballs/stress-ng/stress-ng-0.11.14.tar.xz
+	wget --show-progress -qO $WORKDIR/stress-ng.tar.xz https://kernel.ubuntu.com/~cking/tarballs/stress-ng/stress-ng-0.11.20.tar.xz
 	echo "Preparing stress-ng..."
 	cd $WORKDIR
 	tar xf stress-ng.tar.xz
-	cd stress-ng-0.11.14
+	cd stress-ng-0.11.20
 	sed -i 's/\-O2/\-O3\ \-march\=native/' Makefile
 	make -s -j${CPUCORES} &>/dev/null && make -s DESTDIR=$WORKDIR/stress-ng install &>/dev/null
-	cd .. && rm -rf stress-ng-0.11.14
+	cd .. && rm -rf stress-ng-0.11.20
 fi
 
 if [[ ! -d $WORKDIR/blender ]]; then
@@ -237,22 +237,21 @@ if [[ ! -d $WORKDIR/blender ]]; then
 	unzip -qqj $WORKDIR/blender.zip -d $WORKDIR/blender
 fi
 
-if [[ ! -d $WORKDIR/ffmpeg-d3b963c ]]; then
-	wget --show-progress -qO $WORKDIR/ffmpeg.tar.gz https://git.ffmpeg.org/gitweb/ffmpeg.git/snapshot/d3b963cc41824a3c5b2758ac896fb23e20a87875.tar.gz
+if [[ ! -d $WORKDIR/ffmpeg-6b6b9e5 ]]; then
+	wget --show-progress -qO $WORKDIR/ffmpeg.tar.gz https://git.ffmpeg.org/gitweb/ffmpeg.git/snapshot/6b6b9e593dd4d3aaf75f48d40a13ef03bdef9fdb.tar.gz
 	echo "Preparing ffmpeg..."
 	cd $WORKDIR
 	tar xf ffmpeg.tar.gz
-	cd ffmpeg-d3b963c
-	./configure --prefix=/tmp --disable-debug --enable-static \
-  	  --disable-ladspa --disable-programs --disable-ffplay --disable-ffprobe \
-  	  --disable-doc --disable-network --disable-protocols --disable-lzma \
+	cd ffmpeg-6b6b9e5
+	./configure --prefix=/tmp --disable-debug --enable-static --enable-version3 \
+  	  --enable-gpl --disable-programs --disable-ffplay --disable-ffprobe \
+  	  --disable-doc --disable-network --disable-protocols --disable-lzma --disable-openssl \
   	  --disable-amf --disable-cuda-llvm --disable-cuvid --disable-d3d11va --disable-dxva2 \
   	  --disable-nvdec --disable-nvenc --disable-vaapi --disable-vdpau --disable-sdl2 \
-  	  --disable-schannel --disable-securetransport --disable-libfontconfig \
-  	  --disable-libfreetype --enable-libspeex --enable-libvpx --enable-libopus --enable-libvorbis \
-  	  --enable-libx264 --enable-libx265 --enable-opengl --enable-libdrm --enable-gpl \
-  	  --enable-gmp --enable-gnutls --disable-avx512 --disable-fma4 --disable-autodetect \
-  	  --enable-version3 &>/dev/null
+  	  --disable-schannel --disable-sndio --disable-securetransport --disable-libfontconfig \
+  	  --disable-libfreetype --enable-gmp --enable-libvorbis --enable-libdav1d \
+  	  --enable-libx264 --enable-libx265 --enable-libvpx --enable-opengl --enable-libdrm \
+  	  --disable-autodetect &>/dev/null
 fi
 
 ### main
