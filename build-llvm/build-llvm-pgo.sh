@@ -7,13 +7,13 @@
 
 [[ -z $1 ]] && echo "specify full path for build files!" && exit 4
 TOPLEV=$1
-PKGVER="11.0.0-rc2"
+PKGVER="11.0.0-rc3"
 NCORES=`nproc`
-export CFLAGS="-O2 -march=native -pipe"
-export CXXFLAGS="-O2 -march=native -pipe"
+export CFLAGS="-O3 -march=native -pipe"
+export CXXFLAGS="-O3 -march=native -pipe"
 #export LDFLAGS="-Wl,-O1"
 COMMONFLAGS="-DLLVM_LINK_LLVM_DYLIB=ON \
--DLLVM_TARGETS_TO_BUILD=X86;AMDGPU
+-DLLVM_TARGETS_TO_BUILD=X86 \
 -DLLVM_HOST_TRIPLE=x86_64-pc-linux-gnu \
 -DLLVM_ENABLE_RTTI=ON \
 -DLLVM_ENABLE_WARNINGS=OFF \
@@ -21,7 +21,8 @@ COMMONFLAGS="-DLLVM_LINK_LLVM_DYLIB=ON \
 -DLLVM_ENABLE_DOXYGEN=OFF \
 -DCMAKE_BUILD_TYPE=Release \
 -DLLVM_BINUTILS_INCDIR=/usr/include \
--DLLVM_PARALLEL_COMPILE_JOBS=${NCORES} -DLLVM_PARALLEL_LINK_JOBS=$(( ${NCORES} / 2)) \
+-DLLVM_PARALLEL_COMPILE_JOBS=${NCORES} \
+-DLLVM_PARALLEL_LINK_JOBS=$(( ${NCORES} / 2 )) \
 -DLLVM_ENABLE_BINDINGS=OFF \
 -DLLVM_ENABLE_OCAMLDOC=OFF \
 -DLLVM_ENABLE_PLUGINS=ON \
@@ -65,15 +66,13 @@ if [[ ! -d $TOPLEV/stage1 ]] ; then
 fi
 
 cd $TOPLEV/stage1
-if [[ ! -f ./bin/clang-11 ]] ; then
-	ninja clean
-	cmake -G Ninja "$TOPLEV/llvm-project-${PKGVER/-/}/llvm" -DCMAKE_C_COMPILER=/usr/bin/gcc -DCMAKE_CXX_COMPILER=/usr/bin/g++ \
--DLLVM_CCACHE_BUILD=ON -DCMAKE_INSTALL_PREFIX="$TOPLEV/stage1/install" \
+ninja clean
+cmake -G Ninja "$TOPLEV/llvm-project-${PKGVER/-/}/llvm" -DCMAKE_C_COMPILER=/usr/bin/gcc -DCMAKE_CXX_COMPILER=/usr/bin/g++ \
+-DLLVM_CCACHE_BUILD=OFF -DCMAKE_INSTALL_PREFIX="$TOPLEV/stage1/install" \
 -DCOMPILER_RT_BUILD_SANITIZERS=OFF -DLLVM_ENABLE_BACKTRACES=OFF -DLLVM_INCLUDE_TESTS=OFF \
 -DLLVM_INCLUDE_UTILS=OFF ${COMMONFLAGS} -DLLVM_ENABLE_PROJECTS="clang;compiler-rt;lld" || exit 8
-	echo "----> STAGE 1"
-	ninja install || exit 16
-fi
+echo "----> STAGE 1"
+ninja install || exit 16
 
 sleep 2
 
@@ -118,13 +117,12 @@ CPATH=$TOPLEV/stage1/install/bin/
 ninja clean
 cmake -G Ninja "$TOPLEV/llvm-project-${PKGVER/-/}/llvm" -DCMAKE_C_COMPILER=$CPATH/clang \
 -DCMAKE_CXX_COMPILER=$CPATH/clang++ -DCMAKE_INSTALL_PREFIX="$TOPLEV/stage4-final/Release" \
--DLLVM_USE_LINKER=lld -DLLVM_ENABLE_LTO=Thin -DLLVM_ENABLE_FFI=ON \
+-DLLVM_USE_LINKER=lld -DLLVM_ENABLE_LTO=Full \
 -DLLVM_PROFDATA_FILE="${TOPLEV}/stage2-gen/profiles/clang.profdata" ${COMMONFLAGS} \
--DLLVM_ENABLE_PROJECTS="clang;clang-tools-extra;compiler-rt;lld;polly" || exit 8
+-DLLVM_ENABLE_PROJECTS="clang;clang-tools-extra;compiler-rt;lld" || exit 8
 echo "---> STAGE 4 FINAL"
 ninja check-llvm || exit 32 ; ninja check-lld || exit 32 ; ninja check-clang || exit 32
 ninja install || exit 16
 
 echo "----> DONE!"
 echo "----> clang is in $TOPLEV/stage4-final/Release"
-
