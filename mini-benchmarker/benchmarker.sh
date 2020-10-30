@@ -75,7 +75,7 @@ runargon() {
 
 runperf1() {
 	local RESFILE="$WORKDIR/runperf"
-	perf bench -f simple sched messaging -p -t -g 25 -l 10000 1> $RESFILE &
+	perf bench -f simple sched messaging -p -g 30 -l 8000 1> $RESFILE &
 	local PID=$!
 	echo -n -e "* perf sched:\t\t\t\t"
 	local s='-+'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %2 )); printf "\b${s:$i:1}"; sleep 1; done
@@ -123,13 +123,13 @@ exitproc() {
 export LANG=C
 CURRDIR=`pwd`
 WORKDIR="$1"
-VER="v1.2"
+VER="v1.3"
 CDATE=`date +%F-%H%M`
 RAMSIZE=`awk '/MemTotal/{print int($2 / 1000)}' /proc/meminfo`
 CPUCORES=`nproc`
 CPUGOV=`cat /sys/devices/system/cpu/cpufreq/policy0/scaling_governor`
 CPUFREQ=`awk '{print $1 / 1000000}' /sys/devices/system/cpu/cpufreq/policy0/cpuinfo_max_freq`
-COEFF=$(echo "scale=4; l(${CPUCORES} / 2 + ${CPUFREQ})" | bc -l)
+COEFF=$(echo "scale=4; sqrt(${CPUCORES} / 2 + ${CPUFREQ})" | bc -l)
 NRTESTS=9
 SYSINFO=$(inxi -c0 -v | sed "s/Up:.*//;s/inxi:.*//;s/Storage:.*//")
 STRESS=${WORKDIR}/stress-ng/usr/bin/stress-ng
@@ -148,6 +148,9 @@ fi
 LOGFILE="$WORKDIR/benchie_${CDATE}.log"
 LOCKFILE=`mktemp $WORKDIR/benchie.XXXX`
 
+# allow more open files
+ulimit -n 4096
+
 # stress-ng jobfiles
 cat > $WORKDIR/stressC <<- EOF
 run sequential
@@ -158,7 +161,7 @@ EOF
 echo "cpu-ops $((12000 / ${CPUCORES}))" >> $WORKDIR/stressC
 cat >> $WORKDIR/stressC <<- EOF
 bsearch CPUCORES
-bsearch-size 262144
+bsearch-size 524288
 EOF
 echo "bsearch-ops $((2400 / ${CPUCORES}))" >> $WORKDIR/stressC
 cat >> $WORKDIR/stressC <<- EOF
@@ -171,17 +174,15 @@ run sequential
 timeout 0
 vm CPUCORES
 vm-method read64
-vm-lock
-vm-bytes 2G
+vm-bytes 3G
 EOF
-echo "vm-ops $((12000 / ${CPUCORES}))" >> $WORKDIR/stressR
+echo "vm-ops $((24000 / ${CPUCORES}))" >> $WORKDIR/stressR
 cat >> $WORKDIR/stressR <<- EOF
 vm CPUCORES
 vm-method write64
-vm-lock
-vm-bytes 2G
+vm-bytes 3G
 EOF
-echo "vm-ops $((12000 / ${CPUCORES}))" >> $WORKDIR/stressR
+echo "vm-ops $((24000 / ${CPUCORES}))" >> $WORKDIR/stressR
 cat >> $WORKDIR/stressR <<- EOF
 stream CPUCORES
 stream-index 1
@@ -281,7 +282,7 @@ unset arrayz; unset ARRAY
 arrayz=(`awk -F': ' '{print $2}' $LOGFILE`)
 
 for ((i=0 ; i<${NRTESTS} ; i++)) ; do
-	ARRAY[$i]="$(echo "scale=10; sqrt(${arrayz[$i]} * $COEFF * 100)" | bc -l)"
+	ARRAY[$i]="$(echo "scale=8; ${arrayz[$i]} * $COEFF / 10" | bc -l)"
 done
 
 TTIME="$(IFS="+" ; bc <<< "scale=2; ${arrayz[*]}")"
