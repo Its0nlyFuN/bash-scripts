@@ -27,7 +27,6 @@ runstress2() {
 
 runblend() {
 	local RESFILE="$WORKDIR/runblend"
-	local TMP="$WORKDIR"
 	local BLENDER_USER_CONFIG="$WORKDIR"
 	/usr/bin/time -f %e -o $RESFILE blender -b $WORKDIR/blender/bmw27_cpu.blend -o $WORKDIR/blenderbmw.png -f 1 --verbose 0 -t 0 &>/dev/null &
 	local PID=$!
@@ -53,7 +52,7 @@ runffm() {
 
 runxz() {
 	local RESFILE="$WORKDIR/runxz"
- 	/usr/bin/time -f %e -o $RESFILE xz -z -k -T${CPUCORES} --lzma2=preset=6e,pb=0 -Qqq -f $WORKDIR/firefox60.tar &
+ 	/usr/bin/time -f %e -o $RESFILE xz -z -k -T${CPUCORES} --lzma2=preset=7,pb=0 -Qqq -f $WORKDIR/firefox60.tar &
 	local PID=$!
 	echo -n -e "* xz compression:\t\t\t"
 	local s='-+'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %2 )); printf "\b${s:$i:1}"; sleep 1; done
@@ -64,7 +63,7 @@ runxz() {
 
 runargon() {
 	local RESFILE="$WORKDIR/runargon"
-	/usr/bin/time -f %e -o $RESFILE argon2 BenchieSalt -i -t 40 -m 20 -p $CPUCORES &>/dev/null <<< $(dd if=/dev/urandom bs=1 count=64 status=none) &
+	/usr/bin/time -f %e -o $RESFILE argon2 BenchieSalt -id -t 32 -m 21 -p $CPUCORES &>/dev/null <<< $(dd if=/dev/urandom bs=1 count=64 status=none) &
 	local PID=$!
 	echo -n -e "* argon2 hashing:\t\t\t"
 	local s='-+'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %2 )); printf "\b${s:$i:1}"; sleep 1; done
@@ -75,18 +74,29 @@ runargon() {
 
 runperf1() {
 	local RESFILE="$WORKDIR/runperf"
-	perf bench -f simple sched messaging -p -g 30 -l 8000 1> $RESFILE &
+	perf bench -f simple sched messaging -p -g 32 -l 10000 1> $RESFILE &
 	local PID=$!
-	echo -n -e "* perf sched:\t\t\t\t"
+	echo -n -e "* perf sched msg:\t\t\t"
 	local s='-+'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %2 )); printf "\b${s:$i:1}"; sleep 1; done
 	printf "\b " ; cat $RESFILE
-	echo "perf sched: $(cat $RESFILE)" >> $LOGFILE
+	echo "perf sched msg: $(cat $RESFILE)" >> $LOGFILE
 	return 0
 }
 
 runperf2() {
 	local RESFILE="$WORKDIR/runperf"
-	/usr/bin/time -f %e -o $RESFILE perf bench -f simple mem memcpy --nr_loops 100 --size 2GB -f x86-64-movsb &>/dev/null &
+	perf bench -f simple sched pipe -T 1> $RESFILE &
+	local PID=$!
+	echo -n -e "* perf sched pipe:\t\t\t"
+	local s='-+'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %2 )); printf "\b${s:$i:1}"; sleep 1; done
+	printf "\b " ; cat $RESFILE
+	echo "perf sched pipe: $(cat $RESFILE)" >> $LOGFILE
+	return 0
+}
+
+runperf3() {
+	local RESFILE="$WORKDIR/runperf"
+	/usr/bin/time -f %e -o $RESFILE perf bench -f simple mem memcpy --nr_loops 100 --size 2GB -f default &>/dev/null &
 	local PID=$!
 	echo -n -e "* perf memcpy:\t\t\t\t"
 	local s='-+'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %2 )); printf "\b${s:$i:1}"; sleep 1; done
@@ -123,14 +133,16 @@ exitproc() {
 export LANG=C
 CURRDIR=`pwd`
 WORKDIR="$1"
-VER="v1.3"
+TMP=/tmp
+VER="v1.4"
 CDATE=`date +%F-%H%M`
 RAMSIZE=`awk '/MemTotal/{print int($2 / 1000)}' /proc/meminfo`
 CPUCORES=`nproc`
 CPUGOV=`cat /sys/devices/system/cpu/cpufreq/policy0/scaling_governor`
 CPUFREQ=`awk '{print $1 / 1000000}' /sys/devices/system/cpu/cpufreq/policy0/cpuinfo_max_freq`
+#CPUL3C=`lscpu -C=name,all-size | awk '/L3/{print $2}'`
 COEFF=$(echo "scale=4; sqrt(${CPUCORES} / 2 + ${CPUFREQ})" | bc -l)
-NRTESTS=9
+NRTESTS=10
 SYSINFO=$(inxi -c0 -v | sed "s/Up:.*//;s/inxi:.*//;s/Storage:.*//")
 STRESS=${WORKDIR}/stress-ng/usr/bin/stress-ng
 
@@ -154,18 +166,25 @@ ulimit -n 4096
 # stress-ng jobfiles
 cat > $WORKDIR/stressC <<- EOF
 run sequential
+sched batch
 timeout 0
 cpu CPUCORES
 cpu-method matrixprod
 EOF
 echo "cpu-ops $((12000 / ${CPUCORES}))" >> $WORKDIR/stressC
 cat >> $WORKDIR/stressC <<- EOF
-bsearch CPUCORES
-bsearch-size 524288
+cpu CPUCORES
+cpu-method sieve
 EOF
-echo "bsearch-ops $((2400 / ${CPUCORES}))" >> $WORKDIR/stressC
+echo "cpu-ops $((4800 / ${CPUCORES}))" >> $WORKDIR/stressC
+cat >> $WORKDIR/stressC <<- EOF
+cpu CPUCORES
+cpu-method queens
+EOF
+echo "cpu-ops $((4800 / ${CPUCORES}))" >> $WORKDIR/stressC
 cat >> $WORKDIR/stressC <<- EOF
 qsort CPUCORES
+qsort-size 131072
 EOF
 echo "qsort-ops $((2400 / ${CPUCORES}))" >> $WORKDIR/stressC
 
@@ -173,21 +192,26 @@ cat > $WORKDIR/stressR <<- EOF
 run sequential
 timeout 0
 vm CPUCORES
-vm-method read64
-vm-bytes 3G
+vm-method rand-sum
+vm-bytes 4G
+vm-locked
 EOF
-echo "vm-ops $((24000 / ${CPUCORES}))" >> $WORKDIR/stressR
+echo "vm-ops $((12000 / ${CPUCORES}))" >> $WORKDIR/stressR
 cat >> $WORKDIR/stressR <<- EOF
-vm CPUCORES
-vm-method write64
-vm-bytes 3G
+vm-addr CPUCORES
+vm-addr-method dec
 EOF
-echo "vm-ops $((24000 / ${CPUCORES}))" >> $WORKDIR/stressR
+echo "vm-addr-ops $((2400 / ${CPUCORES}))" >> $WORKDIR/stressR
 cat >> $WORKDIR/stressR <<- EOF
-stream CPUCORES
-stream-index 1
+mmap CPUCORES
+mmap-bytes 128m
 EOF
-echo "stream-ops $((2400 / ${CPUCORES}))" >> $WORKDIR/stressR
+echo "mmap-ops $((2400 / ${CPUCORES}))" >> $WORKDIR/stressR
+cat >> $WORKDIR/stressR <<- EOF
+tsearch CPUCORES
+tsearch-size 131072
+EOF
+echo "tsearch-ops $((2400 / ${CPUCORES}))" >> $WORKDIR/stressR
 
 sed -i "s/CPUCORES/$CPUCORES/g" $WORKDIR/stressC
 sed -i "s/CPUCORES/$CPUCORES/g" $WORKDIR/stressR
@@ -197,12 +221,14 @@ sed -i "s/CPUCORES/$CPUCORES/g" $WORKDIR/stressR
 #CPUGOV=$(cpupower frequency-info -o | grep -m1 "^CPU" | awk -F' -  ' '{ print $3 }')
 #CPUMHZ=$(lscpu -e=maxmhz | tail -n1)
 #CPUGHZ=$(echo "scale=1; ${CPUMHZ%%,*} / 1000" | bc)
+
 echo -e "\nMINI-BENCHMARKER: This script can be slow on older computers, take care!\n"
-read -p "Do you want to drop page cache now? Root priviledges needed! (y/N)" DCHOICE
-[[ $DCHOICE = "y" || $DCHOICE = "Y" ]] && su -c "echo 3 > /proc/sys/vm/drop_caches"
+
+#read -p "Do you want to drop page cache now? Root priviledges needed! (y/N) " DCHOICE
+#[[ $DCHOICE = "y" || $DCHOICE = "Y" ]] && su -c "echo 3 > /proc/sys/vm/drop_caches"
 
 if [[ $CPUGOV != "performance" ]] ; then
-	read -p "You should use the 'performance' cpufreq governor, enable now? (y/N)" DCHOICE
+	read -p "You should use the 'performance' cpufreq governor, enable now? (y/N) " DCHOICE
 	[[ $DCHOICE = "y" || $DCHOICE = "Y" ]] && su -c "cpupower frequency-set -g performance"
 fi
 
@@ -268,25 +294,26 @@ echo "=================================================="
 trap killproc INT
 trap exitproc EXIT
 
-runstress1; sleep 3
-runstress2; sleep 3
+runstress1 ; sleep 3
+runstress2 ; sleep 3
 runperf1 ; sleep 3
 runperf2 ; sleep 3
+runperf3 ; sleep 3
 runpi ; sleep 3
 runargon ; sleep 3
-runffm ; sync ; sleep 3
-runxz ; sync ; sleep 3
+runffm ; sleep 3
+runxz ; sleep 3
 runblend ; sleep 3
 
 unset arrayz; unset ARRAY
 arrayz=(`awk -F': ' '{print $2}' $LOGFILE`)
 
 for ((i=0 ; i<${NRTESTS} ; i++)) ; do
-	ARRAY[$i]="$(echo "scale=8; ${arrayz[$i]} * $COEFF / 10" | bc -l)"
+	ARRAY[$i]="$(echo "scale=4; ${arrayz[$i]} * $COEFF / 1.62" | bc -l)"
 done
 
 TTIME="$(IFS="+" ; bc <<< "scale=2; ${arrayz[*]}")"
-INTSCORE="$(IFS="+" ; bc -l <<< "scale=2; ${ARRAY[*]}")"
+INTSCORE="$(IFS="+" ; bc -l <<< "scale=4; ${ARRAY[*]}")"
 SCORE="$(bc -l <<< "scale=2; $INTSCORE / $NRTESTS")"
 echo "--------------------------------------------------"
 echo "Total time in seconds:"
