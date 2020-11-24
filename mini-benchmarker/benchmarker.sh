@@ -7,7 +7,7 @@ runstress1() {
 	local RESFILE="$WORKDIR/runstress1"
 	/usr/bin/time -f %e -o $RESFILE $STRESS -q $WORKDIR/stressC &>/dev/null &
 	local PID=$!
-	echo -n -e "* stress-ng cpu:\t\t\t"
+	echo -n -e "* stress-ng cpu arith:\t\t\t"
 	local s='-+'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %2 )); printf "\b${s:$i:1}"; sleep 1; done
 	printf "\b " ; cat $RESFILE
 	echo "stress-ng cpu: $(cat $RESFILE)" >> $LOGFILE
@@ -18,7 +18,7 @@ runstress2() {
 	local RESFILE="$WORKDIR/runstress2"
 	/usr/bin/time -f %e -o $RESFILE $STRESS -q $WORKDIR/stressR &>/dev/null &
 	local PID=$!
-	echo -n -e "* stress-ng memory:\t\t\t"
+	echo -n -e "* stress-ng cpu-cache-mem:\t\t"
 	local s='-+'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %2 )); printf "\b${s:$i:1}"; sleep 1; done
 	printf "\b " ; cat $RESFILE
 	echo "stress-ng memory: $(cat $RESFILE)" >> $LOGFILE
@@ -140,7 +140,7 @@ RAMSIZE=`awk '/MemTotal/{print int($2 / 1000)}' /proc/meminfo`
 CPUCORES=`nproc`
 CPUGOV=`cat /sys/devices/system/cpu/cpufreq/policy0/scaling_governor`
 CPUFREQ=`awk '{print $1 / 1000000}' /sys/devices/system/cpu/cpufreq/policy0/cpuinfo_max_freq`
-#CPUL3C=`lscpu -C=name,all-size | awk '/L3/{print $2}'`
+CPUL3C=`lscpu -C=name,all-size | awk '/L3/{print $2}'`
 COEFF=$(echo "scale=4; sqrt(${CPUCORES} / 2 + ${CPUFREQ})" | bc -l)
 NRTESTS=10
 SYSINFO=$(inxi -c0 -v | sed "s/Up:.*//;s/inxi:.*//;s/Storage:.*//")
@@ -164,42 +164,49 @@ LOCKFILE=`mktemp $WORKDIR/benchie.XXXX`
 ulimit -n 4096
 
 # stress-ng jobfiles
+# stressC is CPU arithmetic, stressR is CPU+Cache+RAM
 cat > $WORKDIR/stressC <<- EOF
 run sequential
 sched batch
 timeout 0
 cpu CPUCORES
+cpu-method float128
+EOF
+echo "cpu-ops $((4800 / ${CPUCORES}))" >> $WORKDIR/stressC
+cat >> $WORKDIR/stressC <<- EOF
+cpu CPUCORES
 cpu-method matrixprod
 EOF
-echo "cpu-ops $((12000 / ${CPUCORES}))" >> $WORKDIR/stressC
+echo "cpu-ops $((4800 / ${CPUCORES}))" >> $WORKDIR/stressC
+cat >> $WORKDIR/stressC <<- EOF
+cpu CPUCORES
+cpu-method nsqrt
+EOF
+echo "cpu-ops $((4800 / ${CPUCORES}))" >> $WORKDIR/stressC
 cat >> $WORKDIR/stressC <<- EOF
 cpu CPUCORES
 cpu-method sieve
 EOF
-echo "cpu-ops $((4800 / ${CPUCORES}))" >> $WORKDIR/stressC
+echo "cpu-ops $((2400 / ${CPUCORES}))" >> $WORKDIR/stressC
 cat >> $WORKDIR/stressC <<- EOF
 cpu CPUCORES
 cpu-method queens
 EOF
 echo "cpu-ops $((4800 / ${CPUCORES}))" >> $WORKDIR/stressC
-cat >> $WORKDIR/stressC <<- EOF
-qsort CPUCORES
-qsort-size 131072
-EOF
-echo "qsort-ops $((2400 / ${CPUCORES}))" >> $WORKDIR/stressC
 
 cat > $WORKDIR/stressR <<- EOF
 run sequential
 timeout 0
+page-in
+verify
 vm CPUCORES
-vm-method rand-sum
-vm-bytes 4G
-vm-locked
+vm-method incdec
+vm-bytes 2g
 EOF
 echo "vm-ops $((12000 / ${CPUCORES}))" >> $WORKDIR/stressR
 cat >> $WORKDIR/stressR <<- EOF
 vm-addr CPUCORES
-vm-addr-method dec
+vm-addr-method pwr2
 EOF
 echo "vm-addr-ops $((2400 / ${CPUCORES}))" >> $WORKDIR/stressR
 cat >> $WORKDIR/stressR <<- EOF
@@ -208,13 +215,26 @@ mmap-bytes 128m
 EOF
 echo "mmap-ops $((2400 / ${CPUCORES}))" >> $WORKDIR/stressR
 cat >> $WORKDIR/stressR <<- EOF
+stream CPUCORES
+stream-index 0
+stream-l3-size CPUL3C
+stream-madvise nohugepage
+EOF
+echo "stream-ops $((2400 / ${CPUCORES}))" >> $WORKDIR/stressR
+cat >> $WORKDIR/stressR <<- EOF
 tsearch CPUCORES
-tsearch-size 131072
+tsearch-size 65536
 EOF
 echo "tsearch-ops $((2400 / ${CPUCORES}))" >> $WORKDIR/stressR
+cat >> $WORKDIR/stressC <<- EOF
+mergesort CPUCORES
+mergesort-size 131072
+EOF
+echo "mergesort-ops $((2400 / ${CPUCORES}))" >> $WORKDIR/stressC
 
 sed -i "s/CPUCORES/$CPUCORES/g" $WORKDIR/stressC
 sed -i "s/CPUCORES/$CPUCORES/g" $WORKDIR/stressR
+sed -i "s/CPUL3C/$CPUL3C/g" $WORKDIR/stressR
 
 # I leave this for reference
 #CPUFREQ=$(cpupower frequency-info -l | grep -v "analyzing" | awk '{print $2 / 1000000}')

@@ -1,7 +1,7 @@
 # Maintainer: torvic9
 
 pkgname='mini-benchmarker'
-pkgver=0.9.r29.g2af39bf
+pkgver=0.9.r37.g32dca4e
 pkgrel=1
 pkgdesc='A simple benchmarking script using stress-ng, perf, blender etc.'
 url="https://github.com/torvic9/bash-scripts"
