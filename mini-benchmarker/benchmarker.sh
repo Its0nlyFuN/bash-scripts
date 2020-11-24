@@ -127,7 +127,7 @@ killproc() {
 }
 
 exitproc() {
-	echo -e "-> Removing temporary files...\n"
+	echo -e "-> Removing temporary files..."
 	for i in $WORKDIR/{run*,ffmpeg.tar.gz,stress-ng.tar.xz,firefox60.tar.xz,blender*.png,pi.c,stressC,stressR} ; do
 		[[ -f $i ]] && rm $i
 		[[ -d $i ]] && rm -r $i
@@ -190,7 +190,7 @@ LOGFILE="$WORKDIR/benchie_${CDATE}.log"
 # lockfile has no real purpose here but it's cool
 LOCKFILE=`mktemp $WORKDIR/benchie.XXXX`
 
-# allow more open files
+# allow more open files, possibly needed by perf bench msg
 ulimit -n 4096
 
 # stress-ng jobfiles
@@ -289,16 +289,16 @@ echo -e "and pipelining, whereas the ${FARBE3}${TB}perf mem${TN} benchmark tries
 echo -e "raw RAM speed with the libc memcpy function.\n"
 echo -e "The ${FARBE3}${TB}pi calculation${TN} is single-threaded.\n"
 echo -e "${FARBE3}${TB}argon2${TN} is a prized hashing algorithm. Here, we use 30 iterations with"
-echo -e "2G of memory being used, with a fixed salt and a random password.\n"
+echo -e "2G of memory, with a fixed salt and a random password.\n"
 echo -e "What follows are three 'real world' benchmarks, measuring ${FARBE3}${TB}compilation"
 echo -e "of ffmpeg${TN}, ${FARBE3}${TB}xz compression${TN} level 7, and the famous ${FARBE3}${TB}Blender${TN} BMW rendering.\n"
 echo -e "The ${FARBE3}${TB}score${TN} is not really relevant. It tries to compress the pure"
-echo -e "time results. What counts is total time."
-echo -e "The Blender rendering has a lower weighting, because it takes a lot of"
-echo -e "time even on fast CPUs. ${TB}No GPU acceleration.${TN}\n"
-echo -e "You should ${FARBE3}${TB}run this script in runlevel 3${TN}, on Linux distros with systemd,"
+echo -e "time results. What counts is the ${FARBE3}${TB}total time${TN}."
+echo -e "Note that the Blender rendering has a lower weighting, because it takes a"
+echo -e "lot of time even on fast CPUs. ${TB}No GPU acceleration.${TN}\n"
+echo -e "You should ${FARBE3}${TB}run this script in runlevel 3${TN}. On Linux with systemd,"
 echo -e "either append a '3' to the boot command line, or issue"
-echo -e "'systemctl isolate multi-user'.\n"
+echo -e "'systemctl isolate multi-user.target'.\n"
 
 #read -p "Do you want to drop page cache now? Root priviledges needed! (y/N) " DCHOICE
 #[[ $DCHOICE = "y" || $DCHOICE = "Y" ]] && su -c "echo 3 > /proc/sys/vm/drop_caches"
@@ -394,8 +394,8 @@ for ((i=0 ; i<${NRTESTSMIN} ; i++)) ; do
 	ARRAY[$i]="$(echo "scale=4; ${arraytime[$i]} * $COEFF / 1.62" | bc -l)"
 done
 
-# last test is blender which takes more time, use higher divider
-ARRAY[${NRTESTSMIN}]="$(echo "scale=4; ${arraytime[${NRTESTSMIN}]} * $COEFF / 2.43" | bc -l)"
+# last test is blender which takes relatively more time, use higher divider
+ARRAY[${NRTESTSMIN}]="$(echo "scale=4; ${arraytime[${NRTESTSMIN}]} * $COEFF / 2.03" | bc -l)"
 
 TOTTIME="$(IFS="+" ; bc <<< "scale=2; ${arraytime[*]}")"
 INTSCORE="$(IFS="+" ; bc -l <<< "scale=4; ${ARRAY[*]}")"
@@ -406,11 +406,11 @@ echo "Total time in seconds:"
 echo "--------------------------------------------------"
 echo "  ${TB}$TOTTIME${TN}" ; echo "Total time (s): $TOTTIME" >> $LOGFILE
 echo "--------------------------------------------------"
-echo "Total score (lower is better)" ; echo " [multi = $COEFF]:"
+echo -e "Total score (lower is better)" ; echo " [multi = $COEFF]:"
 echo "--------------------------------------------------"
 echo "  ${TB}$SCORE${TN}" ; echo "Total score: $SCORE" >> $LOGFILE
-echo $SYSINFO >> $LOGFILE
 echo "=================================================="
+echo $SYSINFO >> $LOGFILE
 
 exit 0
 
