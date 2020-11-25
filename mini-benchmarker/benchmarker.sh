@@ -122,12 +122,12 @@ runpi() {
 
 # traps (ctrl-c)
 killproc() {
-	echo -e "\n*** Received SIGINT, aborting! ***\n"
+	echo -e "\n**** Received SIGINT, aborting! ****\n"
 	kill -- -$$ && exit 2
 }
 
 exitproc() {
-	echo -e "-> Removing temporary files..."
+	echo -e "\n-> Removing temporary files..."
 	for i in $WORKDIR/{run*,ffmpeg.tar.gz,stress-ng.tar.xz,firefox60.tar.xz,blender*.png,pi.c,stressC,stressR} ; do
 		[[ -f $i ]] && rm $i
 		[[ -d $i ]] && rm -r $i
@@ -237,7 +237,6 @@ echo "crypt-ops $((2400 / ${CPUCORES}))" >> $WORKDIR/stressC
 cat > $WORKDIR/stressR <<- EOF
 run sequential
 timeout 0
-sched batch
 no-rand-seed
 page-in
 verify
@@ -294,8 +293,8 @@ echo -e "What follows are three 'real world' benchmarks, measuring ${FARBE3}${TB
 echo -e "of ffmpeg${TN}, ${FARBE3}${TB}xz compression${TN} level 7, and the famous ${FARBE3}${TB}Blender${TN} BMW rendering.\n"
 echo -e "The ${FARBE3}${TB}score${TN} is not really relevant. It tries to compress the pure"
 echo -e "time results. What counts is the ${FARBE3}${TB}total time${TN}."
-echo -e "Note that the Blender rendering has a lower weighting, because it takes a"
-echo -e "lot of time even on fast CPUs. ${TB}No GPU acceleration.${TN}\n"
+echo -e "Note that the Blender rendering has a lower weighting, because it takes"
+echo -e "a lot of time even on fast CPUs. ${TB}No GPU acceleration.${TN}\n"
 echo -e "You should ${FARBE3}${TB}run this script in runlevel 3${TN}. On Linux with systemd,"
 echo -e "either append a '3' to the boot command line, or issue"
 echo -e "'systemctl isolate multi-user.target'.\n"
@@ -348,7 +347,7 @@ if [[ ! -d $WORKDIR/ffmpeg-6b6b9e5 ]]; then
 	cd $WORKDIR
 	tar xf ffmpeg.tar.gz
 	cd ffmpeg-6b6b9e5
-	./configure --prefix=/tmp --disable-debug --enable-static --enable-version3 \
+	./configure --prefix=$TMP --disable-debug --enable-static --enable-version3 \
   	  --enable-gpl --disable-programs --disable-ffplay --disable-ffprobe \
   	  --disable-doc --disable-network --disable-protocols --disable-lzma --disable-openssl \
   	  --disable-amf --disable-cuda-llvm --disable-cuvid --disable-d3d11va --disable-dxva2 \
@@ -406,7 +405,7 @@ echo "Total time in seconds:"
 echo "--------------------------------------------------"
 echo "  ${TB}$TOTTIME${TN}" ; echo "Total time (s): $TOTTIME" >> $LOGFILE
 echo "--------------------------------------------------"
-echo -e "Total score (lower is better)" ; echo " [multi = $COEFF]:"
+echo -n "Total score (lower is better)" ; echo " [multi = $COEFF]:"
 echo "--------------------------------------------------"
 echo "  ${TB}$SCORE${TN}" ; echo "Total score: $SCORE" >> $LOGFILE
 echo "=================================================="
