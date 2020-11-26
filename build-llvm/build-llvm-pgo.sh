@@ -7,13 +7,13 @@
 
 [[ -z $1 ]] && echo "specify full path for build files!" && exit 4
 TOPLEV=$1
-PKGVER="11.0.0-rc3"
+PKGVER="11.0.1-rc1"
 NCORES=`nproc`
 export CFLAGS="-O2 -march=native -pipe"
 export CXXFLAGS="-O2 -march=native -pipe"
 export LDFLAGS="-Wl,-O1,-z,relro,-z,now"
 COMMONFLAGS="-DLLVM_HOST_TRIPLE=x86_64-pc-linux-gnu \
- -DLLVM_ENABLE_PROJECTS='clang;lld' \
+ -DLLVM_ENABLE_PROJECTS='clang;lld;compiler-rt' \
  -DLLVM_TARGETS_TO_BUILD=X86 \
  -DLLVM_ENABLE_RTTI=OFF \
  -DLLVM_ENABLE_WARNINGS=OFF \
@@ -41,7 +41,7 @@ COMMONFLAGS="-DLLVM_HOST_TRIPLE=x86_64-pc-linux-gnu \
 cd $TOPLEV
 
 if [[ ! -d llvm-project-${PKGVER/-/} ]] ; then
-	wget -O llvm-${PKGVER}.tar.xz --show-progress https://github.com/llvm/llvm-project/releases/download/llvmorg-${PKGVER}/llvm-project-${PKGVER/-/}.tar.xz
+	wget -O llvm-${PKGVER}.tar.xz --show-progress https://github.com/llvm/llvm-project/releases/download/llvmorg-${PKGVER}/llvm-project-${PKGVER/-/}.src.tar.xz
 	tar xf llvm-${PKGVER}.tar.xz
 fi
 
@@ -60,7 +60,7 @@ fi
 cd $TOPLEV/stage1
 
 ninja clean
-cmake -G Ninja "$TOPLEV/llvm-project-${PKGVER/-/}/llvm" -DCMAKE_C_COMPILER=/usr/bin/gcc \
+cmake -G Ninja "$TOPLEV/llvm-project-${PKGVER/-/}.src/llvm" -DCMAKE_C_COMPILER=/usr/bin/gcc \
 -DCMAKE_CXX_COMPILER=/usr/bin/g++ -DLLVM_INCLUDE_TESTS=OFF \
 -DCMAKE_INSTALL_PREFIX="$TOPLEV/stage1/install" -DLLVM_CCACHE_BUILD=ON \
 -DCOMPILER_RT_BUILD_SANITIZERS=OFF -DLLVM_ENABLE_BACKTRACES=OFF \
@@ -79,7 +79,7 @@ cd $TOPLEV/stage2-gen
 
 CPATH=$TOPLEV/stage1/install/bin/
 ninja clean
-cmake -G Ninja "$TOPLEV/llvm-project-${PKGVER/-/}/llvm" -DCMAKE_C_COMPILER=$CPATH/clang \
+cmake -G Ninja "$TOPLEV/llvm-project-${PKGVER/-/}.src/llvm" -DCMAKE_C_COMPILER=$CPATH/clang \
 -DCMAKE_CXX_COMPILER=$CPATH/clang++ -DCMAKE_INSTALL_PREFIX="$TOPLEV/stage2-gen/install" \
 -DLLVM_USE_LINKER=lld -DLLVM_BUILD_INSTRUMENTED=IR -DLLVM_BUILD_RUNTIME=OFF ${COMMONFLAGS} || exit 8
 
@@ -96,7 +96,7 @@ cd $TOPLEV/stage3-train
 
 CPATH=$TOPLEV/stage2-gen/install/bin
 ninja clean
-cmake -G Ninja "$TOPLEV/llvm-project-${PKGVER/-/}/llvm" -DCMAKE_C_COMPILER=$CPATH/clang \
+cmake -G Ninja "$TOPLEV/llvm-project-${PKGVER/-/}.src/llvm" -DCMAKE_C_COMPILER=$CPATH/clang \
 -DCMAKE_CXX_COMPILER=$CPATH/clang++ -DCMAKE_INSTALL_PREFIX="$TOPLEV/stage3-train/install" \
 -DLLVM_USE_LINKER=lld ${COMMONFLAGS} || exit 8
 
@@ -118,7 +118,7 @@ cd $TOPLEV/stage4-final
 
 CPATH=$TOPLEV/stage1/install/bin/
 ninja clean
-cmake -G Ninja "$TOPLEV/llvm-project-${PKGVER/-/}/llvm" -DCMAKE_C_COMPILER=$CPATH/clang \
+cmake -G Ninja "$TOPLEV/llvm-project-${PKGVER/-/}.src/llvm" -DCMAKE_C_COMPILER=$CPATH/clang \
 -DCMAKE_CXX_COMPILER=$CPATH/clang++ -DCMAKE_INSTALL_PREFIX="$TOPLEV/stage4-final/Release" \
 -DLLVM_USE_LINKER=lld -DLLVM_ENABLE_LTO=Thin \
 -DLLVM_PROFDATA_FILE="${TOPLEV}/stage2-gen/profiles/clang.profdata" ${COMMONFLAGS} || exit 8
