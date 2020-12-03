@@ -78,17 +78,6 @@ runargon() {
 
 runperf_sch1() {
 	local RESFILE="$WORKDIR/runperf"
-	perf bench -f simple sched messaging -p -g 32 -l 5000 1> $RESFILE &
-	local PID=$!
-	echo -n -e "* perf sched msg pipe proc:\t\t"
-	local s='-+'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %2 )); printf "\b${s:$i:1}"; sleep 1; done
-	printf "\b " ; cat $RESFILE
-	echo "perf sched msg pipe proc: $(cat $RESFILE)" >> $LOGFILE
-	return 0
-}
-
-runperf_sch2() {
-	local RESFILE="$WORKDIR/runperf"
 	perf bench -f simple sched messaging -p -t -g 32 -l 5000 1> $RESFILE &
 	local PID=$!
 	echo -n -e "* perf sched msg pipe thread:\t\t"
@@ -98,7 +87,7 @@ runperf_sch2() {
 	return 0
 }
 
-runperf_sch3() {
+runperf_sch2() {
 	local RESFILE="$WORKDIR/runperf"
 	perf bench -f simple sched messaging -g 32 -l 5000 1> $RESFILE &
 	local PID=$!
@@ -176,7 +165,7 @@ FARBE2="`printf '\033[4;37m'`"
 FARBE3="`printf '\033[0;33m'`"
 
 # total number of tests
-NRTESTS=11
+NRTESTS=10
 
 # system info will be logged
 SYSINFO=$(inxi -c0 -v | sed "s/Up:.*//;s/inxi:.*//;s/Storage:.*//")
@@ -388,7 +377,6 @@ runstress1 ; sleep 3
 runstress2 ; sleep 3
 runperf_sch1 ; sleep 3
 runperf_sch2 ; sleep 3
-runperf_sch3 ; sleep 3
 runperf_mem ; sleep 3
 runpi ; sleep 3
 runargon ; sleep 3
@@ -406,7 +394,7 @@ for ((i=0 ; i<${NRTESTSMIN} ; i++)) ; do
 done
 
 # last test is blender which takes relatively more time, use higher divider
-ARRAY[${NRTESTSMIN}]="$(echo "scale=4; ${arraytime[${NRTESTSMIN}]} * $COEFF / 2.03" | bc -l)"
+ARRAY[${NRTESTSMIN}]="$(echo "scale=4; ${arraytime[${NRTESTSMIN}]} * $COEFF / 2.16" | bc -l)"
 
 TOTTIME="$(IFS="+" ; bc <<< "scale=2; ${arraytime[*]}")"
 INTSCORE="$(IFS="+" ; bc -l <<< "scale=4; ${ARRAY[*]}")"
