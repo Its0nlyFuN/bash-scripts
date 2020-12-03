@@ -1,15 +1,15 @@
 # Maintainer: torvic9
 
 pkgname='mini-benchmarker'
-pkgver=0.9.r37.g32dca4e
+pkgver=0.9.r44.g11d73bf
 pkgrel=1
 pkgdesc='A simple benchmarking script using stress-ng, perf, blender etc.'
 url="https://github.com/torvic9/bash-scripts"
 arch=('x86_64')
 licence=('GPL3')
-depends=('gcc' 'make' 'cmake' 'time' 'perf' 'unzip''
+depends=('gcc' 'make' 'cmake' 'time' 'perf' 'unzip'
 	 'nasm' 'inxi' 'argon2' 'gmp' 'wget' 'blender'
-	 'dav1d 'x264' 'x265' 'libvorbis')
+	 'dav1d' 'x264' 'x265' 'libvorbis')
 source=(git+https://github.com/torvic9/bash-scripts.git)
 sha512sums=('SKIP')
 
