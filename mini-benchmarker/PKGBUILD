@@ -20,5 +20,5 @@ pkgver() {
 
 package() {
 	cd bash-scripts/$pkgname
-	install -Dm755 benchmarker.sh "$pkgdir/usr/bin/$pkgname.sh"
+	install -Dm755 $pkgname.sh "$pkgdir/usr/bin/$pkgname.sh"
 }

@@ -120,6 +120,32 @@ runpi() {
 	return 0
 }
 
+# intro text and explanation
+intro() {
+    echo -e "\n${FARBE1}MINI-BENCHMARKER: This script can take more than 30m on slow computers!${TN}\n"
+    echo -e "${FARBE3}${TB}Usage: ${TN}\$ mini-benchmarker.sh /path/to/workdir${TN}\n"
+    echo -e "${FARBE2}${TB}Explanation notes${TN}:\n"
+    echo -e "${FARBE3}${TB}stress-ng cpu arith${TN} measures typical FPU math scenarios like"
+    echo -e "prime numbers, Erastothenes' sieve, matrices and the Queens problem.\n"
+    echo -e "${FARBE3}${TB}stress-ng cpu-cache-mem${TN} measures the vm, memory and cache interfaces"
+    echo -e "less focussed on raw cpu performance.\n"
+    echo -e "The ${FARBE3}${TB}perf sched${TN} benchmarks concentrate on interprocess communication"
+    echo -e "and pipelining, whereas the ${FARBE3}${TB}perf mem${TN} benchmark tries to measure"
+    echo -e "raw RAM speed with the libc memcpy function.\n"
+    echo -e "The ${FARBE3}${TB}pi calculation${TN} is single-threaded.\n"
+    echo -e "${FARBE3}${TB}argon2${TN} is a prized hashing algorithm. Here, we use 30 iterations with"
+    echo -e "2G of memory, with a fixed salt and a random password.\n"
+    echo -e "What follows are three 'real world' benchmarks, measuring ${FARBE3}${TB}compilation"
+    echo -e "of ffmpeg${TN}, ${FARBE3}${TB}xz compression${TN} level 7, and the famous ${FARBE3}${TB}Blender${TN} BMW rendering.\n"
+    echo -e "The ${FARBE3}${TB}score${TN} is not really relevant. It tries to compress the pure"
+    echo -e "time results. What counts is the ${FARBE3}${TB}total time${TN}."
+    echo -e "Note that the Blender rendering has a lower weighting, because it takes"
+    echo -e "a lot of time even on fast CPUs. ${TB}No GPU acceleration.${TN}\n"
+    echo -e "You should ${FARBE3}${TB}run this script in runlevel 3${TN}. On Linux with systemd,"
+    echo -e "either append a '3' to the boot command line, or issue"
+    echo -e "'systemctl isolate multi-user.target'.\n"
+}
+
 # traps (ctrl-c)
 killproc() {
 	echo -e "\n**** Received SIGINT, aborting! ****\n"
@@ -177,7 +203,7 @@ STRESS=${WORKDIR}/stress-ng/usr/bin/stress-ng
 [[ $RAMSIZE -lt 3500 ]] && echo "Your computer must have at least 4 GB of RAM! Aborting." && exit 2
 [[ $CPUCORES -lt 2 ]] && echo "Your CPU must have at least two logical or physical cores! Aborting." && exit 2
 
-[[ -z $1 ]] && echo "Please specify the full path for the temporary directory! Aborting." && exit 4
+[[ -z $1 ]] && intro && exit 4
 
 [[ "${WORKDIR:0:1}" != "/" ]] && WORKDIR="$PWD/$WORKDIR"
 if [[ ! -d "$WORKDIR" ]] ; then
@@ -275,29 +301,6 @@ echo "mergesort-ops $((2400 / ${CPUCORES}))" >> $WORKDIR/stressC
 
 sed -i "s/CPUCORES/$CPUCORES/g" $WORKDIR/stressC
 sed -i "s/CPUCORES/$CPUCORES/g;s/CPUL3C/$CPUL3C/g" $WORKDIR/stressR
-
-# intro text and explanation
-echo -e "\n${FARBE1}MINI-BENCHMARKER: This script can take more than 30m on slow computers!${TN}\n"
-echo -e "${FARBE2}${TB}Explanation notes${TN}:\n"
-echo -e "${FARBE3}${TB}stress-ng cpu arith${TN} measures typical FPU math scenarios like"
-echo -e "prime numbers, Erastothenes' sieve, matrices and the Queens problem.\n"
-echo -e "${FARBE3}${TB}stress-ng cpu-cache-mem${TN} measures the vm, memory and cache interfaces"
-echo -e "less focussed on raw cpu performance.\n"
-echo -e "The ${FARBE3}${TB}perf sched${TN} benchmarks concentrate on interprocess communication"
-echo -e "and pipelining, whereas the ${FARBE3}${TB}perf mem${TN} benchmark tries to measure"
-echo -e "raw RAM speed with the libc memcpy function.\n"
-echo -e "The ${FARBE3}${TB}pi calculation${TN} is single-threaded.\n"
-echo -e "${FARBE3}${TB}argon2${TN} is a prized hashing algorithm. Here, we use 30 iterations with"
-echo -e "2G of memory, with a fixed salt and a random password.\n"
-echo -e "What follows are three 'real world' benchmarks, measuring ${FARBE3}${TB}compilation"
-echo -e "of ffmpeg${TN}, ${FARBE3}${TB}xz compression${TN} level 7, and the famous ${FARBE3}${TB}Blender${TN} BMW rendering.\n"
-echo -e "The ${FARBE3}${TB}score${TN} is not really relevant. It tries to compress the pure"
-echo -e "time results. What counts is the ${FARBE3}${TB}total time${TN}."
-echo -e "Note that the Blender rendering has a lower weighting, because it takes"
-echo -e "a lot of time even on fast CPUs. ${TB}No GPU acceleration.${TN}\n"
-echo -e "You should ${FARBE3}${TB}run this script in runlevel 3${TN}. On Linux with systemd,"
-echo -e "either append a '3' to the boot command line, or issue"
-echo -e "'systemctl isolate multi-user.target'.\n"
 
 #read -p "Do you want to drop page cache now? Root priviledges needed! (y/N) " DCHOICE
 #[[ $DCHOICE = "y" || $DCHOICE = "Y" ]] && su -c "echo 3 > /proc/sys/vm/drop_caches"
