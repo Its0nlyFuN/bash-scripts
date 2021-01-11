@@ -7,7 +7,7 @@
 
 [[ -z $1 ]] && echo "specify full path for build files!" && exit 4
 TOPLEV=$1
-PKGVER="11.0.1-rc1"
+PKGVER="11.0.1-rc2"
 NCORES=`nproc`
 export CFLAGS="-O2 -march=native -pipe"
 export CXXFLAGS="-O2 -march=native -pipe"
