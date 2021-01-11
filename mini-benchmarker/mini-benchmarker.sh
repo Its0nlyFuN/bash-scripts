@@ -67,7 +67,7 @@ runxz() {
 
 runargon() {
 	local RESFILE="$WORKDIR/runargon"
-	/usr/bin/time -f %e -o $RESFILE argon2 BenchieSalt -id -t 30 -m 21 -p $CPUCORES &>/dev/null <<< $(dd if=/dev/urandom bs=1 count=64 status=none) &
+	/usr/bin/time -f %e -o $RESFILE argon2 BenchieSalt -id -t 25 -m 21 -p $CPUCORES &>/dev/null <<< $(dd if=/dev/urandom bs=1 count=64 status=none) &
 	local PID=$!
 	echo -n -e "* argon2 hashing:\t\t\t"
 	local s='-+'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %2 )); printf "\b${s:$i:1}"; sleep 1; done
@@ -234,12 +234,12 @@ cat >> $WORKDIR/stressC <<- EOF
 cpu CPUCORES
 cpu-method matrixprod
 EOF
-echo "cpu-ops $((4800 / ${CPUCORES}))" >> $WORKDIR/stressC
+echo "cpu-ops $((2400 / ${CPUCORES}))" >> $WORKDIR/stressC
 cat >> $WORKDIR/stressC <<- EOF
 cpu CPUCORES
 cpu-method nsqrt
 EOF
-echo "cpu-ops $((4800 / ${CPUCORES}))" >> $WORKDIR/stressC
+echo "cpu-ops $((2400 / ${CPUCORES}))" >> $WORKDIR/stressC
 cat >> $WORKDIR/stressC <<- EOF
 cpu CPUCORES
 cpu-method prime
@@ -278,7 +278,7 @@ EOF
 echo "vm-addr-ops $((2400 / ${CPUCORES}))" >> $WORKDIR/stressR
 cat >> $WORKDIR/stressR <<- EOF
 mmap CPUCORES
-mmap-bytes 128m
+mmap-bytes 64m
 EOF
 echo "mmap-ops $((2400 / ${CPUCORES}))" >> $WORKDIR/stressR
 cat >> $WORKDIR/stressR <<- EOF
