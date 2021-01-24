@@ -9,7 +9,7 @@ arch=('x86_64')
 licence=('GPL3')
 depends=('gcc' 'make' 'cmake' 'time' 'perf' 'unzip'
 	 'nasm' 'inxi' 'argon2' 'gmp' 'wget' 'blender'
-	 'dav1d' 'x264' 'x265' 'libvorbis')
+	 'zlib' 'libdrm' 'git')
 source=(git+https://github.com/torvic9/bash-scripts.git)
 sha512sums=('SKIP')
 

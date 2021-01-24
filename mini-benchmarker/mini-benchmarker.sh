@@ -67,7 +67,7 @@ runxz() {
 
 runargon() {
 	local RESFILE="$WORKDIR/runargon"
-	/usr/bin/time -f %e -o $RESFILE argon2 BenchieSalt -id -t 25 -m 21 -p $CPUCORES &>/dev/null <<< $(dd if=/dev/urandom bs=1 count=64 status=none) &
+	/usr/bin/time -f %e -o $RESFILE argon2 BenchieSalt -id -t 20 -m 21 -p $CPUCORES &>/dev/null <<< $(dd if=/dev/urandom bs=1 count=64 status=none) &
 	local PID=$!
 	echo -n -e "* argon2 hashing:\t\t\t"
 	local s='-+'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %2 )); printf "\b${s:$i:1}"; sleep 1; done
@@ -120,6 +120,30 @@ runpi() {
 	return 0
 }
 
+runcmark() {
+	cd $WORKDIR/coremark-pro
+	local RESFILE="$WORKDIR/runcmark"
+	/usr/bin/time -f%e -o $RESFILE make TARGET=linux64 XCMD="-c${CPUCORES}" certify-all 1>/dev/null &
+	local PID=$!
+	echo -n -e "* coremark-pro:\t\t\t\t"
+	local s='-+'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %2 )); printf "\b${s:$i:1}"; sleep 1; done
+	printf "\b " ; cat $RESFILE
+	echo "coremark-pro: $(cat $RESFILE)" >> $LOGFILE
+	return 0
+}
+
+runnamd() {
+	cd $WORKDIR/NAMD_2.14_Linux-x86_64-multicore
+	local RESFILE="$WORKDIR/runnamd"
+	/usr/bin/time -f%e -o $RESFILE ./namd2  +p24 +setcpuaffinity ../apoa1/apoa1.namd &>/dev/null &
+	local PID=$!
+	echo -n -e "* namd 92K atoms:\t\t\t\t"
+	local s='-+'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %2 )); printf "\b${s:$i:1}"; sleep 1; done
+	printf "\b " ; cat $RESFILE
+	echo "namd 92K atoms: $(cat $RESFILE)" >> $LOGFILE
+	return 0
+}
+
 # intro text and explanation
 intro() {
     echo -e "\n${FARBE1}MINI-BENCHMARKER: This script can take more than 30m on slow computers!${TN}\n"
@@ -154,9 +178,8 @@ killproc() {
 
 exitproc() {
 	echo -e "\n-> Removing temporary files..."
-	for i in $WORKDIR/{run*,ffmpeg.tar.gz,stress-ng.tar.xz,firefox60.tar.xz,blender*.png,pi.c,stressC,stressR} ; do
+	for i in $WORKDIR/{run*,blender*.png,stressC,stressR,firefox60.tar.xz} ; do
 		[[ -f $i ]] && rm $i
-		[[ -d $i ]] && rm -r $i
 	done
 	rm $(echo $LOCKFILE) && echo -e "${TB}Bye!${TN}\n"
 }
@@ -168,7 +191,7 @@ export LANG=C
 CURRDIR=`pwd`
 WORKDIR="$1"
 TMP="/tmp"
-VER="v1.4"
+VER="v1.5"
 CDATE=`date +%F-%H%M`
 RAMSIZE=`awk '/MemTotal/{print int($2 / 1000)}' /proc/meminfo`
 CPUCORES=`nproc`
@@ -191,7 +214,7 @@ FARBE2="`printf '\033[4;37m'`"
 FARBE3="`printf '\033[0;33m'`"
 
 # total number of tests
-NRTESTS=10
+NRTESTS=12
 
 # system info will be logged
 SYSINFO=$(inxi -c0 -v | sed "s/Up:.*//;s/inxi:.*//;s/Storage:.*//")
@@ -216,7 +239,7 @@ LOGFILE="$WORKDIR/benchie_${CDATE}.log"
 # lockfile has no real purpose here but it's cool
 LOCKFILE=`mktemp $WORKDIR/benchie.XXXX`
 
-# allow more open files, possibly needed by perf bench msg
+# allow more open files, needed by perf bench msg
 ulimit -n 4096
 
 # stress-ng jobfiles
@@ -227,19 +250,14 @@ sched batch
 no-rand-seed
 timeout 0
 cpu CPUCORES
-cpu-method float128
+cpu-method matrixprod
 EOF
 echo "cpu-ops $((4800 / ${CPUCORES}))" >> $WORKDIR/stressC
 cat >> $WORKDIR/stressC <<- EOF
 cpu CPUCORES
-cpu-method matrixprod
-EOF
-echo "cpu-ops $((2400 / ${CPUCORES}))" >> $WORKDIR/stressC
-cat >> $WORKDIR/stressC <<- EOF
-cpu CPUCORES
 cpu-method nsqrt
 EOF
-echo "cpu-ops $((2400 / ${CPUCORES}))" >> $WORKDIR/stressC
+echo "cpu-ops $((4800 / ${CPUCORES}))" >> $WORKDIR/stressC
 cat >> $WORKDIR/stressC <<- EOF
 cpu CPUCORES
 cpu-method prime
@@ -247,38 +265,26 @@ EOF
 echo "cpu-ops $((2400 / ${CPUCORES}))" >> $WORKDIR/stressC
 cat >> $WORKDIR/stressC <<- EOF
 cpu CPUCORES
-cpu-method sieve
-EOF
-echo "cpu-ops $((2400 / ${CPUCORES}))" >> $WORKDIR/stressC
-cat >> $WORKDIR/stressC <<- EOF
-cpu CPUCORES
 cpu-method queens
 EOF
-echo "cpu-ops $((2400 / ${CPUCORES}))" >> $WORKDIR/stressC
+echo "cpu-ops $((4800 / ${CPUCORES}))" >> $WORKDIR/stressC
 cat >> $WORKDIR/stressC <<- EOF
 crypt CPUCORES
 EOF
-echo "crypt-ops $((2400 / ${CPUCORES}))" >> $WORKDIR/stressC
+echo "crypt-ops $((4800 / ${CPUCORES}))" >> $WORKDIR/stressC
 
 cat > $WORKDIR/stressR <<- EOF
 run sequential
 timeout 0
 no-rand-seed
-page-in
 verify
-vm CPUCORES
-vm-method incdec
-vm-bytes 2g
-EOF
-echo "vm-ops $((12000 / ${CPUCORES}))" >> $WORKDIR/stressR
-cat >> $WORKDIR/stressR <<- EOF
 vm-addr CPUCORES
 vm-addr-method pwr2
 EOF
 echo "vm-addr-ops $((2400 / ${CPUCORES}))" >> $WORKDIR/stressR
 cat >> $WORKDIR/stressR <<- EOF
 mmap CPUCORES
-mmap-bytes 64m
+mmap-bytes 128m
 EOF
 echo "mmap-ops $((2400 / ${CPUCORES}))" >> $WORKDIR/stressR
 cat >> $WORKDIR/stressR <<- EOF
@@ -315,51 +321,68 @@ fi
 echo -e "\n${TB}Checking, downloading and preparing test files...${TN}"
 
 if [[ ! -f $WORKDIR/firefox60.tar ]]; then
-	wget --show-progress -qO $WORKDIR/firefox60.tar.xz https://ftp.mozilla.org/pub/firefox/releases/60.9.0esr/source/firefox-60.9.0esr.source.tar.xz
+	wget --show-progress -N -qO $WORKDIR/firefox60.tar.xz https://ftp.mozilla.org/pub/firefox/releases/60.9.0esr/source/firefox-60.9.0esr.source.tar.xz
 	echo "-> Unzipping Firefox tarball..."
 	xz -d -q $WORKDIR/firefox60.tar.xz
 fi
 
 if [[ ! -f $WORKDIR/pi ]] ; then
-	wget --show-progress -qO $WORKDIR/pi.c https://gmplib.org/download/misc/gmp-chudnovsky.c
+	wget --show-progress -N -qO $WORKDIR/pi.c https://gmplib.org/download/misc/gmp-chudnovsky.c
 	echo "-> Compiling pi source file..."
 	gcc -O3 -march=native $WORKDIR/pi.c -o $WORKDIR/pi -lm -lgmp
 	rm $WORKDIR/pi.c
 fi
 
 if [[ ! -d $WORKDIR/stress-ng ]]; then
-	wget --show-progress -qO $WORKDIR/stress-ng.tar.xz https://kernel.ubuntu.com/~cking/tarballs/stress-ng/stress-ng-0.11.24.tar.xz
+	wget --show-progress -N -qO $WORKDIR/stress-ng.tar.xz https://kernel.ubuntu.com/~cking/tarballs/stress-ng/stress-ng-0.12.02.tar.xz
 	echo "-> Preparing stress-ng..."
 	cd $WORKDIR
 	tar xf stress-ng.tar.xz
-	cd stress-ng-0.11.24
+	cd stress-ng-0.12.02
 	sed -i 's/\-O2/\-O2\ \-march\=native/' Makefile
 	make -s -j${CPUCORES} &>/dev/null && make -s DESTDIR=$WORKDIR/stress-ng install &>/dev/null
-	cd .. && rm -rf stress-ng-0.11.24
+	cd .. && rm -rf stress-ng-0.12.02
+fi
+
+if [[ ! -d $WORKDIR/coremark-pro ]]; then
+	git clone -q https://github.com/eembc/coremark-pro.git $WORKDIR/coremark-pro
+	echo "-> Preparing coremark-pro..."
+	cd $WORKDIR/coremark-pro
+	sed -i 's/\-O2/\-O2\ \-march\=native/' util/make/gcc64.mak
+	make TARGET=linux64 build &>/dev/null
+	cd ..
 fi
 
 if [[ ! -d $WORKDIR/blender ]]; then
-	wget --show-progress -qO $WORKDIR/blender.zip https://download.blender.org/demo/test/BMW27_2.blend.zip
+	wget --show-progress -N -qO $WORKDIR/blender.zip https://download.blender.org/demo/test/BMW27_2.blend.zip
 	echo "-> Unzipping Blender demo files..."
 	unzip -qqj $WORKDIR/blender.zip -d $WORKDIR/blender
 fi
 
 if [[ ! -d $WORKDIR/ffmpeg-6b6b9e5 ]]; then
-	wget --show-progress -qO $WORKDIR/ffmpeg.tar.gz https://git.ffmpeg.org/gitweb/ffmpeg.git/snapshot/6b6b9e593dd4d3aaf75f48d40a13ef03bdef9fdb.tar.gz
+	wget --show-progress -N -qO $WORKDIR/ffmpeg.tar.gz https://git.ffmpeg.org/gitweb/ffmpeg.git/snapshot/6b6b9e593dd4d3aaf75f48d40a13ef03bdef9fdb.tar.gz
 	echo "-> Preparing ffmpeg..."
 	cd $WORKDIR
 	tar xf ffmpeg.tar.gz
 	cd ffmpeg-6b6b9e5
 	./configure --prefix=$TMP --disable-debug --enable-static --enable-version3 \
-  	  --enable-gpl --disable-programs --disable-ffplay --disable-ffprobe \
-  	  --disable-doc --disable-network --disable-protocols --disable-lzma --disable-openssl \
-  	  --disable-amf --disable-cuda-llvm --disable-cuvid --disable-d3d11va --disable-dxva2 \
-  	  --disable-nvdec --disable-nvenc --disable-vaapi --disable-vdpau --disable-sdl2 \
-  	  --disable-schannel --disable-sndio --disable-securetransport --disable-libfontconfig \
-  	  --disable-libfreetype --enable-gmp --enable-libvorbis --enable-libdav1d \
-  	  --enable-libx264 --enable-libx265 --disable-libvpx --enable-opengl --enable-libdrm \
-  	  --disable-autodetect &>/dev/null
+  	  --enable-gpl --disable-ffplay --disable-ffprobe \
+  	  --disable-doc --disable-network --disable-protocols --enable-zlib \
+  	  --disable-iconv --enable-libdrm --disable-stripping --disable-autodetect \
+	  --extra-cflags="-march=native" --extra-cxxflags="-march=native" &>/dev/null
 fi
+
+if [[ ! -d $WORKDIR/namd ]]; then
+	wget --show-progress -N -qO $WORKDIR/namd.tar.gz http://www.ks.uiuc.edu/Research/namd/2.14/download/946183/NAMD_2.14_Linux-x86_64-multicore.tar.gz
+	wget --show-progress -N -qO $WORKDIR/namd-example.tar.gz https://www.ks.uiuc.edu/Research/namd/utilities/apoa1.tar.gz
+	echo "-> Preparing NAMD..."
+	cd $WORKDIR
+	tar xf namd.tar.gz
+	tar xf namd-example.tar.gz
+	sed -i 's/\/usr//;s/500/200/' apoa1/apoa1.namd
+	cd ..
+fi
+	
 
 # here we go
 echo -e "\n${TB}Starting...${TN}\n" ; sync ; sleep 2
@@ -378,9 +401,11 @@ trap exitproc EXIT
 # run
 runstress1 ; sleep 3
 runstress2 ; sleep 3
+runcmark ; sleep 3
 runperf_sch1 ; sleep 3
 runperf_sch2 ; sleep 3
 runperf_mem ; sleep 3
+runnamd ; sleep 3
 runpi ; sleep 3
 runargon ; sleep 3
 runffm ; sleep 3
