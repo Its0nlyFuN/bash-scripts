@@ -137,7 +137,7 @@ runnamd() {
 	local RESFILE="$WORKDIR/runnamd"
 	/usr/bin/time -f%e -o $RESFILE ./namd2  +p24 +setcpuaffinity ../apoa1/apoa1.namd &>/dev/null &
 	local PID=$!
-	echo -n -e "* namd 92K atoms:\t\t\t\t"
+	echo -n -e "* namd 92K atoms:\t\t\t"
 	local s='-+'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %2 )); printf "\b${s:$i:1}"; sleep 1; done
 	printf "\b " ; cat $RESFILE
 	echo "namd 92K atoms: $(cat $RESFILE)" >> $LOGFILE
