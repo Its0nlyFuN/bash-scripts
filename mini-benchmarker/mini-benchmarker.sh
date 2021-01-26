@@ -133,9 +133,9 @@ runcmark() {
 }
 
 runnamd() {
-	cd $WORKDIR/NAMD_2.14_Linux-x86_64-multicore
+	cd $WORKDIR/namd/NAMD_2.14_Linux-x86_64-multicore
 	local RESFILE="$WORKDIR/runnamd"
-	/usr/bin/time -f%e -o $RESFILE ./namd2  +p24 +setcpuaffinity ../apoa1/apoa1.namd &>/dev/null &
+	/usr/bin/time -f%e -o $RESFILE ./namd2 +p${CPUCORES} +setcpuaffinity ../apoa1/apoa1.namd &>/dev/null &
 	local PID=$!
 	echo -n -e "* namd 92K atoms:\t\t\t"
 	local s='-+'; local i=0; while kill -0 $PID &>/dev/null ; do i=$(( (i+1) %2 )); printf "\b${s:$i:1}"; sleep 1; done
@@ -284,7 +284,7 @@ EOF
 echo "vm-addr-ops $((2400 / ${CPUCORES}))" >> $WORKDIR/stressR
 cat >> $WORKDIR/stressR <<- EOF
 mmap CPUCORES
-mmap-bytes 128m
+mmap-bytes 64m
 EOF
 echo "mmap-ops $((2400 / ${CPUCORES}))" >> $WORKDIR/stressR
 cat >> $WORKDIR/stressR <<- EOF
@@ -296,7 +296,7 @@ EOF
 echo "stream-ops $((2400 / ${CPUCORES}))" >> $WORKDIR/stressR
 cat >> $WORKDIR/stressR <<- EOF
 bsearch CPUCORES
-bsearch-size 131072
+bsearch-size 262144
 EOF
 echo "bsearch-ops $((2400 / ${CPUCORES}))" >> $WORKDIR/stressR
 cat >> $WORKDIR/stressC <<- EOF
@@ -370,6 +370,7 @@ if [[ ! -d $WORKDIR/ffmpeg-6b6b9e5 ]]; then
   	  --disable-doc --disable-network --disable-protocols --enable-zlib \
   	  --disable-iconv --enable-libdrm --disable-stripping --disable-autodetect \
 	  --extra-cflags="-march=native" --extra-cxxflags="-march=native" &>/dev/null
+	cd ..
 fi
 
 if [[ ! -d $WORKDIR/namd ]]; then
@@ -377,12 +378,12 @@ if [[ ! -d $WORKDIR/namd ]]; then
 	wget --show-progress -N -qO $WORKDIR/namd-example.tar.gz https://www.ks.uiuc.edu/Research/namd/utilities/apoa1.tar.gz
 	echo "-> Preparing NAMD..."
 	cd $WORKDIR
-	tar xf namd.tar.gz
-	tar xf namd-example.tar.gz
-	sed -i 's/\/usr//;s/500/200/' apoa1/apoa1.namd
+	mkdir namd
+	tar -C namd -xf namd.tar.gz
+	tar -C namd -xf namd-example.tar.gz
+	sed -i 's/\/usr//;s/500/200/' namd/apoa1/apoa1.namd
 	cd ..
 fi
-	
 
 # here we go
 echo -e "\n${TB}Starting...${TN}\n" ; sync ; sleep 2
